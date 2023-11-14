@@ -14,6 +14,7 @@ from .trip import Trip
 
 
 class MapMatcher:
+    """Performs map-matching."""
     __mandatory_fields = ["trace_id", "latitude", "longitude", "timestamp"]
 
     def __init__(self):
@@ -28,6 +29,13 @@ class MapMatcher:
 
     @staticmethod
     def from_aequilibrae(proj: Project, mode: str):
+        """Loads the network and creates the graph from an existing AequilibraE project.
+        
+        :Arguments:
+            **proj** (:obj:`aequilibrae.project.Project`): path to existing project.
+
+            **mode** (:obj:`str`): mode to create the graph
+        """
         proj.network.build_graphs(modes=[mode])
         graph = proj.network.graphs[mode]
         graph.prepare_graph(np.array([1]))
@@ -42,20 +50,52 @@ class MapMatcher:
         return mmatcher
 
     def set_output_folder(self, output_folder: str):
-        # Name of the output folder
+        """Name of the output folder.
+        
+        :Arguments:
+
+            **output_folder** (:obj:`str`): path to folder
+        """
         self.output_folder = output_folder
 
     def set_stop_algorithm(self, stop_algorithm):
+        """Sets the stop algorithm.
+        
+        :Arguments:
+
+            **stop_algorithm** (:obj:`str`)
+        """
         if stop_algorithm not in self.parameters.algorithm_parameters:
             raise ValueError(f"Unknown Stop algorithm: {stop_algorithm}")
         self.parameters.stop_algorithm = stop_algorithm
 
     def load_network(self, graph: Graph, links: gpd.GeoDataFrame, nodes: Optional[gpd.GeoDataFrame] = None):
+        """Loads the project network.
+
+        :Arguments:
+
+            **graph** (:obj:`aequilibrae.graph.Graph`): AequilibraE graph
+
+            **links** (:obj:`gpd.GeoDataFrame`): GeoDataFrame with the network links
+
+            **nodes** (:obj:`gpd.GeoDataFrame`, optional): GeoDataFrame with the network nodes
+        """
         self.network = Network(graph=graph, links=links, nodes=nodes, parameters=self.parameters)
 
     def load_gps_traces(self, gps_traces: Union[gpd.GeoDataFrame, PathLike], crs: Optional[int] = None):
-        """Coordinate system for GPS pings must ALWAYS be 4326 when loading from CSV.
-        Required fields are:  ["trace_id", "latitude", "longitude", "timestamp"]"""
+        """
+        Loads the GPS traces to the map-matcher.
+
+        Coordinate system for GPS pings must ALWAYS be 4326 when loading from CSV.
+        Required fields are:  ["trace_id", "latitude", "longitude", "timestamp"]
+
+        :Arguments:
+
+            **gps_trace** (:obj:`gpd.GeoDataFrame`): GeoDataFrame containing the vehicle GPS traces.
+
+            **crs** (:obj: `int`, optional): coordinate system
+
+        """
 
         if isinstance(gps_traces, gpd.GeoDataFrame):
             self.__orig_crs = gps_traces.crs
@@ -73,6 +113,14 @@ class MapMatcher:
         self.__traces = traces.to_crs(self.parameters.geoprocessing.projected_crs)
 
     def load_stops(self, stops: Union[gpd.GeoDataFrame, PathLike]):
+        """
+        Loads the stops.
+
+        :Arguments:
+
+            **stops** (:obj:`Union[gpd.GeoDataFrame, PathLike]`): GeoDataFrame or PahLike containing the vehicle stops.
+            
+        """
         if isinstance(stops, gpd.GeoDataFrame):
             self.__stops = stops.to_crs(4326)
         else:
@@ -89,6 +137,7 @@ class MapMatcher:
             self.trips.append(Trip(gps_trace=gdf, stops=stops, parameters=self.parameters, network=self.network))
 
     def execute(self):
+        """Executes map-matching."""
         self._build_trips()
         self.network._orig_crs = self.__orig_crs
         success = 0

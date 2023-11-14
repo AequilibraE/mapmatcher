@@ -15,6 +15,19 @@ from .stop_finder import stops_maximum_space
 
 
 class Trip:
+    """Builds the path a vehicle did.
+
+    .. code-block:: python
+
+        >>> from mapmatcher.trip import Trip
+
+        >>> trip = Trip(gps_trace, parameters, network)
+        >>> trip.map_match()
+
+        >>> trip.result.plot()
+
+    """
+
     def __init__(
         self,
         gps_trace: gpd.GeoDataFrame,
@@ -23,6 +36,17 @@ class Trip:
         stops: Optional[gpd.GeoDataFrame] = None,
     ):
         # Fields necessary for running the algorithm
+        """
+        :Arguments:
+            **gps_trace** (:obj:`gpd.GeoDataFrame`): GeoDataFrame containing the vehicle GPS traces.
+
+            **parameters** (:obj:`Parameters`): Map-Matching parameters.
+
+            **network** (:obj:`mapmatcher.network.Network`): MapMatcher Network object.
+
+            **stops** (:obj:`gpd.GeoDataFrame`, optional):
+
+        """
 
         self.__coverage = -1.1
         self.__candidate_links = np.array([])
@@ -48,6 +72,13 @@ class Trip:
         self.has_heading = "heading" in gps_trace
 
     def map_match(self, ignore_errors=False):
+        """
+        Performs map-matching.
+
+        :Arguments:
+            **ignore_errors** (:obj:`bool`):
+
+        """
         if self.has_error:
             if not ignore_errors:
                 logging.warning(
@@ -82,10 +113,14 @@ class Trip:
 
     @property
     def success(self):
+        """
+        Indicates the success of the map-matching procedure. If it succeeded, it returns `1`, otherwise returns `0`.
+        """
         return self.__map_matched
 
     @property
     def path_shape(self) -> LineString:
+        """Returns the `shapely.LineString` that represents the map-matched path."""
         if not self.__geo_path.length:
             links = self.network.links.loc[self.__mm_results.links.to_numpy(), :]
             geo_data = []
@@ -97,6 +132,7 @@ class Trip:
 
     @property
     def result(self):
+        """Returns a GeoDataFrame containing the network links selected in map-matching."""
         links = self.network.links.loc[self.__mm_results.links.to_numpy(), :]
         # return links
         return gpd.GeoDataFrame(self.__mm_results, geometry=links.geometry.values, crs=links.crs).to_crs(
@@ -105,6 +141,7 @@ class Trip:
 
     @property
     def coverage(self) -> float:
+        """Returns the distance (in metres) between the bounds of the geometries that represent the path."""
         if self.__coverage < 0:
             x1, y1, x2, y2 = self.trace.total_bounds
             self.__coverage = sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
@@ -112,10 +149,15 @@ class Trip:
 
     @property
     def has_error(self) -> bool:
+        """
+        Indicates the presence of errors during the map-matching process.
+        Returns `True` if there are any errors, otherwise, it returns `False`.
+        """
         return len(self._error_type) > 0
 
     @property
     def candidate_links(self) -> np.ndarray:
+        """Returns an array containing the candidate links."""
         if self.__candidate_links.shape[0] == 0:
             self.__network_links()
         return self.__candidate_links
@@ -181,6 +223,7 @@ class Trip:
                 self._error_type += f"  Max speed surpassed for {w} seconds"
 
     def compute_stops(self):
+        """Compute stops."""
         if len(self._stop_nodes):
             return
 
@@ -214,6 +257,7 @@ class Trip:
         self.__candidate_links = cand.link_id.to_numpy()
 
     def match_quality(self):
+        """Asses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         buffer = self.parameters.map_matching.buffer_size
 
         trip = gpd.GeoDataFrame({"d": [1]}, geometry=[self.path_shape], crs=3857)
