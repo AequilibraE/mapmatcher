@@ -89,7 +89,7 @@ pygments_style = "sphinx"
 #
 # html_theme = "pyramid"
 html_theme = "pydata_sphinx_theme"
-
+html_title = 'MapMatcher'
 
 
 # Add any paths that contain custom static files (such as style sheets) here,
