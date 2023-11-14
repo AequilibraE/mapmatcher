@@ -23,7 +23,7 @@ project_dir = os.path.abspath("../../")
 if str(project_dir) not in sys.path:
     sys.path.insert(0, project_dir)
 
-from mapmatcher.__version__ import version
+from mapmatcher import __version__ as version
 
 # -- Project information -----------------------------------------------------
 
@@ -47,12 +47,15 @@ extensions = [
     "sphinx_autodoc_annotation",
     "sphinx.ext.autosummary",
     "sphinx.ext.githubpages",
+    "myst_parser",
     # 'rst2pdf.pdfbuilder',
 ]
 
+myst_enable_extensions = ["html_admonition", "colon_fence"]
+
 sphinx_gallery_conf = {
     "examples_dirs": ["examples"],  # path to your example scripts
-    "gallery_dirs": ["_examples"],  # path to where to save gallery generated output
+    "gallery_dirs": ["_auto_examples"],  # path to where to save gallery generated output
 }
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -70,7 +73,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -85,8 +88,8 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "pyramid"
-# html_theme = "pydata_sphinx_theme"
+# html_theme = "pyramid"
+html_theme = "pydata_sphinx_theme"
 
 # html_theme_options = {
 #     "body_max_width": '70%',

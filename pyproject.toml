@@ -8,12 +8,10 @@ authors = [{ name = "Pedro Camargo" }]
 maintainers = [{ name = "Pedro Camargo", email = "pedro@outerloop.io" }]
 dynamic = ["version"]
 description = "A package to map-match GPS traces onto an arbitrary network"
-
+license = {text = "MIT"}
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "License :: Proprietary",
+    "Development Status :: 3 - Alpha",
     "Operating System :: OS Independent",
-    "Intended Audience :: Science/Research",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
