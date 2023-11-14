@@ -27,9 +27,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-testing = ['ruff', 'black', 'isort', pytest]
+testing = ['ruff', 'black', 'isort', 'pytest']
 build = ["setuptools", "wheel", "build"]
-auxiliary = [folium, notebook]
+auxiliary = ['folium', 'notebook']
 docs = ["pyaml",
         "enum34>=1.1.6",
         "Sphinx",
@@ -46,7 +46,7 @@ docs = ["pyaml",
         "ipython_genutils",
         "folium",
         "sphinxcontrib-youtube"]
-dev = ['mapmatcher[linting, auxiliary, docs]']
+dev = ['mapmatcher[testing, auxiliary, build, docs]']
 
 [project.urls]
 Homepage = "https://github.com/pedrocamargo/map_matching"
