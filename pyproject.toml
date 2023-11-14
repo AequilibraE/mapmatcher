@@ -27,24 +27,26 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-linting = [
-    'ruff', 'pytest'
-]
-formatting = [
-    'black', 'isort'
-]
-docs = [
-    'aequilibrae',
-    'geopandas',
-    'Sphinx',
-    'sphinx_theme',
-    'sphinx_autodoc_annotation',
-    'nbsphinx',
-    'pydata-sphinx-theme',
-    'pandoc',
-    'sphinx-gallery'
-]
-dev = ['mapmatcher[linting, formatting, docs]']
+testing = ['ruff', 'black', 'isort', pytest]
+build = ["setuptools", "wheel", "build"]
+auxiliary = [folium, notebook]
+docs = ["pyaml",
+        "enum34>=1.1.6",
+        "Sphinx",
+        "pydata-sphinx-theme==0.13.3",
+        "sphinx-book-theme",
+        "myst-parser",
+        "sphinx_autodoc_annotation",
+        "nbsphinx",
+        "pillow",
+        "matplotlib",
+        "folium",
+        "sphinx-gallery",
+        "nbsphinx",
+        "ipython_genutils",
+        "folium",
+        "sphinxcontrib-youtube"]
+dev = ['mapmatcher[linting, auxiliary, docs]']
 
 [project.urls]
 Homepage = "https://github.com/pedrocamargo/map_matching"

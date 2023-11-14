@@ -21,7 +21,6 @@ jobs:
       run: |
         sudo apt-get install -y pandoc
         python -m pip install --upgrade pip
-        python -m pip install setuptools wheel build --upgrade
 
     - name: Builds package
       run: python -m build
