@@ -12,8 +12,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from sphinx_gallery.sorting import ExplicitOrder
-
 project_dir = Path(__file__).parent.parent.parent
 if str(project_dir) not in sys.path:
     sys.path.append(str(project_dir))
@@ -38,9 +36,9 @@ author = "Pedro Camargo"
 # ones.
 extensions = [
     "nbsphinx",
+    "sphinx.ext.autodoc",
     "sphinx_gallery.load_style",
     "sphinx_gallery.gen_gallery",
-    "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
@@ -48,7 +46,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.githubpages",
     "myst_parser",
-    # 'rst2pdf.pdfbuilder',
+    "sphinxcontrib.youtube",
 ]
 
 myst_enable_extensions = ["html_admonition", "colon_fence"]
@@ -56,9 +54,10 @@ myst_enable_extensions = ["html_admonition", "colon_fence"]
 sphinx_gallery_conf = {
     "examples_dirs": ["examples"],  # path to your example scripts
     "gallery_dirs": ["_auto_examples"],  # path to where to save gallery generated output
+    "image_scrapers": ("matplotlib"),
+    "capture_repr": ("_repr_html_", "__repr__"),
+    "remove_config_comments": True,
 }
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -78,7 +77,7 @@ language = "en"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "_auto_examples/**/*.ipynb"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
@@ -91,10 +90,6 @@ pygments_style = "sphinx"
 # html_theme = "pyramid"
 html_theme = "pydata_sphinx_theme"
 
-# html_theme_options = {
-#     "body_max_width": '70%',
-#     'sidebarwidth': '20%'
-# }
 
 
 # Add any paths that contain custom static files (such as style sheets) here,

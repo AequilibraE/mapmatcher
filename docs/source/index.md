@@ -11,15 +11,7 @@ to its ecosystem.
 Following on the AequilibraE ethos, however, one does not need an AequilibraE model 
 to use **MapMatcher** to map-match GPS traces to a bespoke link network.
 
-# Examples
-
-Examples on MapMatcher application can be found in this 
-
 ```{toctree}
----
-numbered: 2
-maxdepth: 2
----
 _auto_examples/index
 ```
 
