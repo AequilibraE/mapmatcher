@@ -41,7 +41,40 @@ mmatcher.execute()
 for trip in mmatcher.trips:
     if trip.success:
         break
-trip.path_shape
+
+# %%
+import folium
+import numpy as np
+import geopandas as gpd
+# Create a geometry list from the GeoDataFrame
+trace = trip.trace.to_crs(4326)
+geo_df_list = [[point.xy[1][0], point.xy[0][0], ts] for point, ts in zip(trace.geometry, trace.timestamp)]
+
+result_layer = folium.FeatureGroup("Map-match result")
+trace_layer = folium.FeatureGroup("GPS traces")
+
+# Iterate through list and add a marker for each volcano, color-coded by its type.
+i = 0
+for lat, lng, ts in geo_df_list:
+    trace_layer.add_child(folium.CircleMarker(location=[lat, lng], radius=1,
+                                              fill=True,  # Set fill to True
+                                              color='black',
+                                              tooltip=str(ts),
+                                              fill_opacity=1.0))
+
+gdf = gpd.GeoDataFrame({"d": [1]}, geometry=[trip.path_shape], crs=3857).to_crs(4326).explode(ignore_index=True)
+for _, rec in gdf.iterrows():
+    coords = rec.geometry.xy
+    coordinates = [[y, x] for x, y in zip(coords[0], coords[1])]
+    folium.PolyLine(coordinates, weight=5, color="red").add_to(result_layer)
+
+map = folium.Map(location=[np.mean(coords[1]), np.mean(coords[0])], tiles="OpenStreetMap", zoom_start=15)
+
+
+result_layer.add_to(map)
+trace_layer.add_to(map)
+folium.LayerControl(position='bottomright').add_to(map)
+map
 
 # %%
 trip.result
