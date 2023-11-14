@@ -12,8 +12,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from sphinx_gallery.sorting import ExplicitOrder
-
 project_dir = Path(__file__).parent.parent.parent
 if str(project_dir) not in sys.path:
     sys.path.append(str(project_dir))
@@ -23,7 +21,7 @@ project_dir = os.path.abspath("../../")
 if str(project_dir) not in sys.path:
     sys.path.insert(0, project_dir)
 
-from mapmatcher.__version__ import version
+from mapmatcher import __version__ as version
 
 # -- Project information -----------------------------------------------------
 
@@ -38,24 +36,28 @@ author = "Pedro Camargo"
 # ones.
 extensions = [
     "nbsphinx",
+    "sphinx.ext.autodoc",
     "sphinx_gallery.load_style",
     "sphinx_gallery.gen_gallery",
-    "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
     "sphinx_autodoc_annotation",
     "sphinx.ext.autosummary",
     "sphinx.ext.githubpages",
-    # 'rst2pdf.pdfbuilder',
+    "myst_parser",
+    "sphinxcontrib.youtube",
 ]
+
+myst_enable_extensions = ["html_admonition", "colon_fence"]
 
 sphinx_gallery_conf = {
     "examples_dirs": ["examples"],  # path to your example scripts
-    "gallery_dirs": ["_examples"],  # path to where to save gallery generated output
+    "gallery_dirs": ["_auto_examples"],  # path to where to save gallery generated output
+    "image_scrapers": ("matplotlib"),
+    "capture_repr": ("_repr_html_", "__repr__"),
+    "remove_config_comments": True,
 }
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -70,12 +72,12 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "_auto_examples/**/*.ipynb"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
@@ -85,13 +87,9 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "pyramid"
-# html_theme = "pydata_sphinx_theme"
-
-# html_theme_options = {
-#     "body_max_width": '70%',
-#     'sidebarwidth': '20%'
-# }
+# html_theme = "pyramid"
+html_theme = "pydata_sphinx_theme"
+html_title = 'MapMatcher'
 
 
 # Add any paths that contain custom static files (such as style sheets) here,

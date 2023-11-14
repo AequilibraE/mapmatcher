@@ -35,3 +35,14 @@ mmatcher = MapMatcher.from_aequilibrae(project, "c")
 # let's add the GPS data to the map-matcher and run it!
 mmatcher.load_gps_traces(nauru_gps)
 mmatcher.execute()
+
+
+# %%
+for trip in mmatcher.trips:
+    if trip.success:
+        break
+trip.path_shape
+
+# %%
+trip.result
+

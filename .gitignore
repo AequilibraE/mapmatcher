@@ -2,8 +2,10 @@
 _build
 _static
 _templates
+docs/source/_auto_examples/*
 docs/source/_examples/*
 docs/build/*
+dist/*
 
 # User-specific stuff:
 .idea/**/workspace.xml
@@ -57,4 +59,4 @@ fabric.properties
 
 #Virtual environment
 .venv/*
-.mapmatcher.egg-info/*
+mapmatcher.egg-info/*
