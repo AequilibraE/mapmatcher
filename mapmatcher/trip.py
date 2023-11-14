@@ -212,3 +212,16 @@ class Trip:
         # TODO: Add consideration of heading
         # TODO: Add heuristic to give bigger discounts for dasd
         self.__candidate_links = cand.link_id.to_numpy()
+
+    def match_quality(self):
+        buffer = self.parameters.map_matching.buffer_size
+
+        trip = gpd.GeoDataFrame({"d": [1]}, geometry=[self.path_shape], crs=3857)
+
+        buffer_area = gpd.GeoDataFrame({"d": [1]}, geometry=trip.buffer(buffer), crs=3857)
+
+        stops_in_buffer = self.trace.sjoin(buffer_area).shape[0]
+
+        all_stops = self.trace.shape[0]
+
+        return round(stops_in_buffer / all_stops, 4) * 100
