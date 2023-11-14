@@ -60,11 +60,16 @@ trace_layer = folium.FeatureGroup("GPS traces")
 # Iterate through list and add a marker for each GPS ping.
 i = 0
 for lat, lng, ts in geo_df_list:
-    trace_layer.add_child(folium.CircleMarker(location=[lat, lng], radius=1,
-                                              fill=True,  # Set fill to True
-                                              color='black',
-                                              tooltip=str(ts),
-                                              fill_opacity=1.0))
+    trace_layer.add_child(
+        folium.CircleMarker(
+            location=[lat, lng],
+            radius=1,
+            fill=True,  # Set fill to True
+            color="black",
+            tooltip=str(ts),
+            fill_opacity=1.0,
+        )
+    )
 
 gdf = gpd.GeoDataFrame({"d": [1]}, geometry=[trip.path_shape], crs=3857).to_crs(4326).explode(ignore_index=True)
 for _, rec in gdf.iterrows():
@@ -76,7 +81,7 @@ map = folium.Map(location=[np.mean(coords[1]), np.mean(coords[0])], tiles="OpenS
 
 result_layer.add_to(map)
 trace_layer.add_to(map)
-folium.LayerControl(position='bottomright').add_to(map)
+folium.LayerControl(position="bottomright").add_to(map)
 map
 
 # %%

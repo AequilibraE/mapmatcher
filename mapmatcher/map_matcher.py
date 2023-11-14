@@ -14,7 +14,17 @@ from .trip import Trip
 
 
 class MapMatcher:
-    """Performs map-matching."""
+    """Performs map-matching.
+
+    .. code-block:: python
+
+        >>> from mapmatcher import MapMatcher
+
+        >>> matcher = MapMatcher.from_aequilibrae(project, "c")
+        >>> mmatcher.load_gps_traces(nauru_gps)
+        >>> mmatcher.execute()
+    """
+
     __mandatory_fields = ["trace_id", "latitude", "longitude", "timestamp"]
 
     def __init__(self):
@@ -30,7 +40,7 @@ class MapMatcher:
     @staticmethod
     def from_aequilibrae(proj: Project, mode: str):
         """Loads the network and creates the graph from an existing AequilibraE project.
-        
+
         :Arguments:
             **proj** (:obj:`aequilibrae.project.Project`): path to existing project.
 
@@ -51,7 +61,7 @@ class MapMatcher:
 
     def set_output_folder(self, output_folder: str):
         """Name of the output folder.
-        
+
         :Arguments:
 
             **output_folder** (:obj:`str`): path to folder
@@ -60,7 +70,7 @@ class MapMatcher:
 
     def set_stop_algorithm(self, stop_algorithm):
         """Sets the stop algorithm.
-        
+
         :Arguments:
 
             **stop_algorithm** (:obj:`str`)
@@ -119,7 +129,7 @@ class MapMatcher:
         :Arguments:
 
             **stops** (:obj:`Union[gpd.GeoDataFrame, PathLike]`): GeoDataFrame or PahLike containing the vehicle stops.
-            
+
         """
         if isinstance(stops, gpd.GeoDataFrame):
             self.__stops = stops.to_crs(4326)

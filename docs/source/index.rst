@@ -6,7 +6,7 @@ The Python **MapMatcher** package is yet another Python package designed to
 map-match GPS traces onto a network.
 
 The main difference between this package and other existing solutions is that it 
-is built around [AequilibraE](https://www.aequilibrae.com), adding a powerful resource
+is built around `AequilibraE <https://www.aequilibrae.com>`_, adding a powerful resource
 to its ecosystem.
 
 Following on the AequilibraE ethos, however, one does not need an AequilibraE model 

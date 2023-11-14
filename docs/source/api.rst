@@ -1,5 +1,7 @@
-API
-===
+.. _api_references:
+
+API References
+==============
 
 This page contains the API References for the existing functions in MapMatcher.
 

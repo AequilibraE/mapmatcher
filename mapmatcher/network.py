@@ -8,7 +8,7 @@ from mapmatcher.parameters import Parameters
 class Network:
     """
     Creates the properties for the outputs.
-    
+
     .. code-block:: python
 
         >>> from mapmatcher.network import Network
@@ -16,6 +16,7 @@ class Network:
         >>> network = Network(graph, links, nodes, parameters)
 
     """
+
     def __init__(self, graph: Graph, links: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame, parameters: Parameters):
         """
         :Arguments:
