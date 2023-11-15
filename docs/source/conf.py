@@ -34,21 +34,21 @@ author = "Pedro Camargo"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    "nbsphinx",
-    "sphinx.ext.autodoc",
-    "sphinx_gallery.load_style",
-    "sphinx_gallery.gen_gallery",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.coverage",
-    "sphinx.ext.mathjax",
-    "sphinx_autodoc_annotation",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.githubpages",
-    "myst_parser",
-    "sphinxcontrib.youtube",
-    "sphinx_copybutton"
-]
+extensions = ["sphinx.ext.autodoc",]
+# extensions = [
+#     "nbsphinx",
+#     "sphinx.ext.autodoc",
+#     "sphinx_gallery.load_style",
+#     "sphinx_gallery.gen_gallery",
+#     "sphinx.ext.intersphinx",
+#     "sphinx.ext.coverage",
+#     "sphinx.ext.mathjax",
+#     "sphinx_autodoc_annotation",
+#     "sphinx.ext.autosummary",
+#     "sphinx.ext.githubpages",
+#     "myst_parser",
+#     "sphinxcontrib.youtube",
+# ]
 
 myst_enable_extensions = ["html_admonition", "colon_fence"]
 

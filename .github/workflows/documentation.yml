@@ -44,7 +44,6 @@ jobs:
 
       - name: Builds documentation
         run: |
-          sphinx-apidoc -T -o docs/source/generated mapmatcher
           cd docs
           make html
           cd ..

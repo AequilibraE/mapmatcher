@@ -45,8 +45,7 @@ docs = ["pyaml",
         "nbsphinx",
         "ipython_genutils",
         "folium",
-        "sphinxcontrib-youtube",
-        "sphinx_copybutton"]
+        "sphinxcontrib-youtube"]
 dev = ['mapmatcher[testing, auxiliary, build, docs]']
 
 [project.urls]
