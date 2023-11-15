@@ -257,16 +257,11 @@ class Trip:
         self.__candidate_links = cand.link_id.to_numpy()
 
     def match_quality(self):
-        """Asses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
+        """Assesses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         buffer = self.parameters.map_matching.buffer_size
-        crs = self.parameters.geoprocessing.projected_crs
-        
-        # self.trace.intersects(self.path_shape.buffer(buffer))
 
-        trip = gpd.GeoDataFrame({"d": [1]}, geometry=[self.path_shape], crs=crs)
-        buffer_area = gpd.GeoDataFrame({"d": [1]}, geometry=trip.buffer(buffer), crs=crs)
-        stops_in_buffer = self.trace.sjoin(buffer_area).shape[0]
+        stops_in_buffer = self.trace.intersects(self.path_shape.buffer(buffer)).sum()
 
         all_stops = self.trace.shape[0]
 
-        return round(stops_in_buffer / all_stops, 4) * 100
+        return round((stops_in_buffer / all_stops)*100, 2)
