@@ -259,11 +259,12 @@ class Trip:
     def match_quality(self):
         """Asses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         buffer = self.parameters.map_matching.buffer_size
+        crs = self.parameters.geoprocessing.projected_crs
+        
+        # self.trace.intersects(self.path_shape.buffer(buffer))
 
-        trip = gpd.GeoDataFrame({"d": [1]}, geometry=[self.path_shape], crs=3857)
-
-        buffer_area = gpd.GeoDataFrame({"d": [1]}, geometry=trip.buffer(buffer), crs=3857)
-
+        trip = gpd.GeoDataFrame({"d": [1]}, geometry=[self.path_shape], crs=crs)
+        buffer_area = gpd.GeoDataFrame({"d": [1]}, geometry=trip.buffer(buffer), crs=crs)
         stops_in_buffer = self.trace.sjoin(buffer_area).shape[0]
 
         all_stops = self.trace.shape[0]
