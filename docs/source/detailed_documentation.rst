@@ -1,9 +1,8 @@
-
 Conceptual documentation
 ========================
 
 The following sections present MapMatcher documentation. The API reference can be found 
-[here](source/api_reference.md).
+:ref:`here <api_references>`.
 
 Network data
 ------------
@@ -29,7 +28,9 @@ The following fields can also be used, but are optional:
 1. heading (*float*): Direction (degrees [0,359]) the vehicle was heading when ping was registered
 2. speed (*float*): Speed the vehicle was traveling at when ping happened
 
-> When loading GPS data from CSV files, the GPS pings coordinate system must **always** be 4326.
+.. note::
+
+    When loading GPS data from CSV files, the GPS pings coordinate system must **always** be 4326.
 
 Data Quality
 ------------
@@ -47,12 +48,12 @@ the maximum *jitter* acceptable in the model, which defaults to zero.
 The parameter can be changed before any data is loaded into the MapMatcher
 instance (to 2.5 meters, for example).
 
-```python
-from mapmatcher import MapMatcher
+.. code-block:: python
 
-matcher = Mapmatcher()
-matcher.parameters.data_quality.maximum_jittery = 2.5
-```
+    >>> from mapmatcher import MapMatcher
+
+    >>> matcher = Mapmatcher()
+    >>> matcher.parameters.data_quality.maximum_jittery = 2.5
 
 Algorithms
 ----------
@@ -68,16 +69,14 @@ Delivery Stop
 +++++++++++++
 
 The delivery stop algorithm is commonly used for the ATRI truck GPS data.
-It was initially developed by Pinjari et al. ()[^1] and improved by [Camargo, Hong, and Livshits (2017)](#citing).
+It was initially developed by *Pinjari et al.* and improved by :ref:`Camargo, Hong, and Livshits (2017) <citation>`.
 
-[^1]: Add reference
+.. code-block:: python
 
-```python
-from mapmatcher.parameters import Parameters
-
-par = Parameters()
-par.stop_algorithm = "delivery_stop"
-```
+    >>> from mapmatcher.parameters import Parameters
+    >>> 
+    >>> par = Parameters()
+    >>> par.stop_algorithm = "delivery_stop"
 
 The algorithm presents the following default premises:
 
@@ -92,12 +91,12 @@ Maximum Space
 The maximum space algorithm limits the maximum time and distance (great circle distance, measured in metres) 
 between consecutive pings.
 
-```python
-from mapmatcher.parameters import Parameters
+.. code-block:: python
 
-par = Parameters()
-par.stop_algorithm = "maximum_space"
-```
+    >>> from mapmatcher.parameters import Parameters
+    >>> 
+    >>> par = Parameters()
+    >>> par.stop_algorithm = "maximum_space"
 
 Path Reconstruction
 -------------------
