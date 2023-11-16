@@ -88,18 +88,20 @@ class Trip:
         res = PathResults()
         res.prepare(self.network.graph)
 
-        links = []
-        directions = []
-        mileposts = []
-        position = 0
-
         # TODO: REPLACE WITH GOING FROM THE UPSTREAM (stop1) NODE OF THE FIRST LINK MATCH AND THE LINK DOWNSTREAM (stop2) OF THE LAST LINK MATCH
-
+        
+        # We first attempt a direct route between first and last pings
         res.compute_path(stop1, stop2)
         self.__mm_results = pd.DataFrame({"links": res.path, "direction": res.path_link_directions, "milepost": res.milepost[1:]})
         par = self.parameters.map_matching
         waypoints = 0
         while self.match_quality < par.minimum_match_quality and waypoints < par.maximum_waypoints:
+                
+            links = []
+            directions = []
+            mileposts = []
+            position = 0
+
 
             #TODO: MAKE THIS LOOK IN A WAY WHERE WE GET A WAYPOINT FROM THE NODES NOT MATCHED AND ADD THEM TO THE MIX
             break
@@ -236,8 +238,8 @@ class Trip:
             self.__candidate_links = cand.link_id.to_numpy()
             return
 
-        # TODO: Add consideration of heading
-        # TODO: Many links would've been matched to the same ping, BUT ONLY ONE CAN EXIST!!!
+        # TODO: Add consideration of heading [1]
+        # TODO: Many links would've been matched to the same ping, BUT ONLY ONE CAN EXIST!!! [2]
         self.__candidate_links = cand.link_id.to_numpy()
 
         #TODO: FOR EACH PING, RETURN THE ORIGIN AND DESTINATION NODES OF THE LINK IT WAS MATCHED TO - ORIGIN IS THE LINK UPSTREAM AND DESTINATION IS DOWNSTREAM
