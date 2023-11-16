@@ -20,14 +20,10 @@ class map_matching:
     # map matching related parameters
     cost_discount: float = 0.1  # possibly used link cost reduction ratio
     buffer_size: float = 50  # Buffer around the links to capture links likely used. Unit is meters
+    minimum_match_quality: 0.99
+    maximum_waypoints: 5
     heading_tolerance: float = 22.5  # In case the network and the GPS data have headings, this is the tolerance to
     # be used to define if a GPS ping could have used a certain link
-
-
-@dataclasses.dataclass
-class MaximumSpace:  # Time in seconds
-    max_avg_time: float = 10800
-    max_avg_distance: float = 5000  # Distance in m. Measured as Great circle distance between each consecutive ping
 
 
 # This is the algorithm commonly used for ATRI truck GPS data. Initially developed by Pinjari et. Al and improved by
@@ -45,17 +41,5 @@ class Parameters:
     geoprocessing = geoprocessing()
     data_quality = data_quality()
     stop_algorithm = "maximum_space"
-    algorithm_parameters = {"delivery_stop": DeliveryStop(), "maximum_space": MaximumSpace(), "exogenous": None}
+    stop_finding = DeliveryStop()
     map_matching = map_matching()
-
-
-# network file fields:
-#   link_id: id
-#   direction: dir
-#   cost: length
-#   interpolation: length
-
-#   # Optional fields. Fill with 0 if not applicable
-#   heading: AUTO  #For on-the-fly computation, use AUTO
-#   speed_AB: 0
-#   speed_BA: 0

@@ -4,31 +4,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from .parameters import MaximumSpace
-
-
-def stops_maximum_space(trace: gpd.GeoDataFrame, parameters: MaximumSpace):
-    intervals_time = floor((trace.ping_posix_time.max() - trace.ping_posix_time.min()) / parameters.max_avg_time)
-    intervals_distance = floor(trace.trace_segment_dist.sum() / parameters.max_avg_distance)
-    intervals = 1 + max(intervals_time, intervals_distance)
-
-    interval_length = ceil(trace.trace_segment_dist.sum() / intervals)
-    interval_finder = np.floor(trace.trace_segment_dist.cumsum() / interval_length)
-    a = interval_finder - interval_finder.shift(1).fillna(0)
-    interv_time = ceil((trace.ping_posix_time.max() - trace.ping_posix_time.min()) / intervals)
-    interval_finder = np.floor((trace.ping_posix_time - trace.ping_posix_time.min()) / interv_time)
-    b = interval_finder - interval_finder.shift(1).fillna(0)
-
-    stop_indices = [
-        floor(np.mean([np.arange(a.shape[0])[a > 0][i], np.arange(b.shape[0])[b > 0][i]])) for i in range(intervals - 1)
-    ]
-    ping_indices = [a.index.values[i] for i in stop_indices]
-    ping_indices.extend([trace.index.values[0], trace.index.values[-1]])
-    ping_indices = list(set(ping_indices))
-
-    stops = trace.loc[ping_indices, :].sort_values(by=["timestamp"]).assign(stop_index=np.arange(len(ping_indices)) + 1)
-    return gpd.GeoDataFrame(stops[["stop_index", "timestamp"]], geometry=stops.geometry, crs=stops.crs)
-
 
 def delivery_stop(self):
     # If no error and if we actually need to find stops, we start the processing

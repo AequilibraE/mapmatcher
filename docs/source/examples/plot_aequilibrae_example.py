@@ -13,8 +13,9 @@ from os.path import join
 from tempfile import gettempdir
 
 from aequilibrae.utils.create_example import create_example
-from mapmatcher.examples import nauru_data
+
 from mapmatcher import MapMatcher
+from mapmatcher.examples import nauru_data
 
 # sphinx_gallery_thumbnail_path = 'images/plot_match_from_aequilibrae_model.png'
 # %%
@@ -46,8 +47,8 @@ for trip in mmatcher.trips:
 
 # %%
 import folium
-import numpy as np
 import geopandas as gpd
+import numpy as np
 
 # %%
 # Create a geometry list from the GeoDataFrame

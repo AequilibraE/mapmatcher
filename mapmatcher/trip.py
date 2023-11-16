@@ -10,8 +10,8 @@ from shapely.geometry import LineString
 from shapely.ops import linemerge
 
 from mapmatcher.network import Network
+
 from .parameters import Parameters
-from .stop_finder import stops_maximum_space
 
 
 class Trip:
@@ -32,8 +32,7 @@ class Trip:
         self,
         gps_trace: gpd.GeoDataFrame,
         parameters: Parameters,
-        network: Network,
-        stops: Optional[gpd.GeoDataFrame] = None,
+        network: Network
     ):
         # Fields necessary for running the algorithm
         """
@@ -44,8 +43,6 @@ class Trip:
 
             **network** (:obj:`mapmatcher.network.Network`): MapMatcher Network object.
 
-            **stops** (:obj:`gpd.GeoDataFrame`, optional):
-
         """
 
         self.__coverage = -1.1
@@ -54,9 +51,7 @@ class Trip:
         self.id = -1
 
         self.parameters = parameters
-        self.stops = gpd.GeoDataFrame([]) if stops is None else stops
-        if self.stops.shape[0]:
-            self.stops.to_crs(parameters.geoprocessing.projected_crs, inplace=True)
+        self.stops: Optional[gpd.GeoDataFrame] = None
         self._stop_nodes = []
         self.warnings = []
         self.__geo_path = LineString([])
@@ -85,9 +80,6 @@ class Trip:
                     f"Cannot map-match trace id {self.id} due to : {self._error_type}. You can also try to ignore errors"
                 )
                 return
-        if self.id == 26:
-            print(1)
-        self.compute_stops()
 
         # TODO: reset_graph takes a LOT of time because of the rebuilding of the graph. We need to hack the change of
         #       the cost field to avoid this insanity
@@ -100,16 +92,19 @@ class Trip:
         directions = []
         mileposts = []
         position = 0
-        for stop1, stop2 in zip(self._stop_nodes[:-1], self._stop_nodes[1:]):
-            res.compute_path(stop1, stop2)
-            if res.path is not None:
-                links.extend(res.path)
-                directions.extend(res.path_link_directions)
-                mileposts.extend(res.milepost[1:] + position)
-                position += res.milepost[-1]
 
-        self.__mm_results = pd.DataFrame({"links": links, "direction": directions, "milepost": mileposts})
-        self.__map_matched = 1
+        # TODO: REPLACE WITH GOING FROM THE UPSTREAM (stop1) NODE OF THE FIRST LINK MATCH AND THE LINK DOWNSTREAM (stop2) OF THE LAST LINK MATCH
+
+        res.compute_path(stop1, stop2)
+        self.__mm_results = pd.DataFrame({"links": res.path, "direction": res.path_link_directions, "milepost": res.milepost[1:]})
+        par = self.parameters.map_matching
+        waypoints = 0
+        while self.match_quality < par.minimum_match_quality and waypoints < par.maximum_waypoints:
+
+            #TODO: MAKE THIS LOOK IN A WAY WHERE WE GET A WAYPOINT FROM THE NODES NOT MATCHED AND ADD THEM TO THE MIX
+            break
+            waypoints += 1
+
 
     @property
     def success(self):
@@ -224,19 +219,8 @@ class Trip:
 
     def compute_stops(self):
         """Compute stops."""
-        if len(self._stop_nodes):
-            return
 
-        if not self.stops.shape[0]:
-            if self.parameters.stop_algorithm == "maximum_space":
-                algo_parameters = self.parameters.algorithm_parameters[self.parameters.stop_algorithm]
-                self.stops = stops_maximum_space(self.trace, algo_parameters)
-            else:
-                raise NotImplementedError("Not implemented yet")
-
-        self._stop_nodes = self.stops.sjoin_nearest(
-            self.network.nodes.reset_index(), distance_col="ping_dist"
-        ).node_id.tolist()
+        raise NotImplementedError("Not implemented yet. Package supports map-matching only for now")
 
     def __network_links(self):
         if self.__candidate_links.shape[0]:
@@ -253,9 +237,12 @@ class Trip:
             return
 
         # TODO: Add consideration of heading
-        # TODO: Add heuristic to give bigger discounts for dasd
+        # TODO: Many links would've been matched to the same ping, BUT ONLY ONE CAN EXIST!!!
         self.__candidate_links = cand.link_id.to_numpy()
 
+        #TODO: FOR EACH PING, RETURN THE ORIGIN AND DESTINATION NODES OF THE LINK IT WAS MATCHED TO - ORIGIN IS THE LINK UPSTREAM AND DESTINATION IS DOWNSTREAM
+
+    @property
     def match_quality(self):
         """Assesses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         buffer = self.parameters.map_matching.buffer_size

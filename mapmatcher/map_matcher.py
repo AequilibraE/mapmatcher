@@ -1,5 +1,5 @@
-from os import PathLike
 import logging
+from os import PathLike
 from typing import List, Optional, Union
 
 import geopandas as gpd
@@ -32,9 +32,7 @@ class MapMatcher:
         self.network: Network() = None
         self.trips: List[Trip] = []
         self.output_folder = None
-        self.__usr_stops = False
         self.__traces: gpd.GeoDataFrame
-        self.__stops: Optional[gpd.GeoDataFrame] = None
         self.parameters = Parameters()
 
     @staticmethod
@@ -67,17 +65,6 @@ class MapMatcher:
             **output_folder** (:obj:`str`): path to folder
         """
         self.output_folder = output_folder
-
-    def set_stop_algorithm(self, stop_algorithm):
-        """Sets the stop algorithm.
-
-        :Arguments:
-
-            **stop_algorithm** (:obj:`str`)
-        """
-        if stop_algorithm not in self.parameters.algorithm_parameters:
-            raise ValueError(f"Unknown Stop algorithm: {stop_algorithm}")
-        self.parameters.stop_algorithm = stop_algorithm
 
     def load_network(self, graph: Graph, links: gpd.GeoDataFrame, nodes: Optional[gpd.GeoDataFrame] = None):
         """Loads the project network.
@@ -122,31 +109,12 @@ class MapMatcher:
 
         self.__traces = traces.to_crs(self.parameters.geoprocessing.projected_crs)
 
-    def load_stops(self, stops: Union[gpd.GeoDataFrame, PathLike]):
-        """
-        Loads the stops.
-
-        :Arguments:
-
-            **stops** (:obj:`Union[gpd.GeoDataFrame, PathLike]`): GeoDataFrame or PahLike containing the vehicle stops.
-
-        """
-        if isinstance(stops, gpd.GeoDataFrame):
-            self.__stops = stops.to_crs(4326)
-        else:
-            stops = pd.read_csv(stops)
-            self.__stops = gpd.GeoDataFrame(
-                stops, geometry=gpd.points_from_xy(stops.longitude, stops.latitude), crs="EPSG:4326"
-            )
-        self.__usr_stops = True
-
     def _build_trips(self):
         self.trips.clear()
         for trace_id, gdf in self.__traces.groupby(["trace_id"]):
-            stops = gpd.GeoDataFrame([]) if not self.__usr_stops else self.__stops[self.__stops.trace_id == trace_id]
-            self.trips.append(Trip(gps_trace=gdf, stops=stops, parameters=self.parameters, network=self.network))
+            self.trips.append(Trip(gps_trace=gdf, parameters=self.parameters, network=self.network))
 
-    def execute(self):
+    def map_match(self):
         """Executes map-matching."""
         self._build_trips()
         self.network._orig_crs = self.__orig_crs
