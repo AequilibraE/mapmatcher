@@ -16,3 +16,21 @@ def compute_line_bearing(pointA, pointB):
     compass_bearing = (bearing_degrees + 360) % 360
 
     return compass_bearing
+
+
+def link_bearing(row):
+    x, y = row["geometry"].xy
+
+    latA = math.radians(x[0]) if row["direction"] == 0 else math.radians(x[1])
+    latB = math.radians(x[1]) if row["direction"] == 0 else math.radians(x[0])
+
+    delta_long = math.radians(y[1] - y[0]) if row["direction"] == 0 else math.radians(y[0] - y[1])
+
+    x = math.sin(delta_long) * math.cos(latB)
+    y = math.cos(latA) * math.sin(latB) - (math.sin(latA) * math.cos(latB) * math.cos(delta_long))
+
+    bearing_radians = math.atan2(x, y)
+    bearing_degrees = math.degrees(bearing_radians)
+    compass_bearing = (bearing_degrees + 360) % 360
+
+    return compass_bearing

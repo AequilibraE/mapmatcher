@@ -20,8 +20,8 @@ class map_matching:
     # map matching related parameters
     cost_discount: float = 0.1  # possibly used link cost reduction ratio
     buffer_size: float = 50  # Buffer around the links to capture links likely used. Unit is meters
-    minimum_match_quality: 0.99
-    maximum_waypoints: 5
+    minimum_match_quality: float = 0.99
+    maximum_waypoints: int = 5
     heading_tolerance: float = 22.5  # In case the network and the GPS data have headings, this is the tolerance to
     # be used to define if a GPS ping could have used a certain link
 

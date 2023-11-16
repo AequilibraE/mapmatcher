@@ -12,6 +12,7 @@ from shapely.ops import linemerge
 from mapmatcher.network import Network
 
 from .parameters import Parameters
+from .linebearing import link_bearing
 
 
 class Trip:
@@ -91,7 +92,7 @@ class Trip:
         # TODO: REPLACE WITH GOING FROM THE UPSTREAM (stop1) NODE OF THE FIRST LINK MATCH AND THE LINK DOWNSTREAM (stop2) OF THE LAST LINK MATCH
         
         # We first attempt a direct route between first and last pings
-        res.compute_path(stop1, stop2)
+        res.compute_path(self.stop1[0], self.stop2[-1])
         self.__mm_results = pd.DataFrame({"links": res.path, "direction": res.path_link_directions, "milepost": res.milepost[1:]})
         par = self.parameters.map_matching
         waypoints = 0
@@ -209,6 +210,8 @@ class Trip:
         self.trace["trace_segment_speed"] = speed
         self.trace.trace_segment_speed.fillna(-1)
 
+        self.trace[["s_lat", "s_lon"]] = self.trace[["latitude", "longitude"]].shift(-1)
+
         # Verify data quality
         w = int(self.trace.trace_segment_traveled_time[self.trace.trace_segment_speed > dqp.max_speed].sum())
         if w > dqp.max_speed_time:
@@ -237,12 +240,32 @@ class Trip:
         if not self.has_heading:
             self.__candidate_links = cand.link_id.to_numpy()
             return
+        
+        nearest_nodes = self.network.nodes.sjoin_nearest(
+            self.trace, distance_col="ping_dist", max_distance=self.parameters.map_matching.buffer_size
+        ).reset_index()
+        nodes_set = nearest_nodes.node_id.tolist()
+
+        net_links = self.network.graph.network
+
+        selected_links = net_links[(net_links["a_node"].isin(nodes_set)) | (net_links["b_node"].isin(nodes_set))].copy()
+        selected_links = selected_links[["link_id", "a_node", "b_node"]]
+        # selected_links.insert(3, "direction", 0)
+        # selected_links.loc[selected_links["b_node"].isin(nodes_set), "direction"] = 1
+        
+        cand = cand[cand["link_id"].isin(selected_links.link_id)]
+        cand = cand.merge(selected_links, on="link_id")
+
+        selected_traces = self.trace[self.trace["gps_fix_id"].isin(cand["gps_fix_id"].unique())].copy()
+        cand["heading"] = cand.apply(link_bearing, axis=1)
 
         # TODO: Add consideration of heading [1]
         # TODO: Many links would've been matched to the same ping, BUT ONLY ONE CAN EXIST!!! [2]
         self.__candidate_links = cand.link_id.to_numpy()
 
         #TODO: FOR EACH PING, RETURN THE ORIGIN AND DESTINATION NODES OF THE LINK IT WAS MATCHED TO - ORIGIN IS THE LINK UPSTREAM AND DESTINATION IS DOWNSTREAM
+        self.stop1 = []
+        self.stop2 = []
 
     @property
     def match_quality(self):
