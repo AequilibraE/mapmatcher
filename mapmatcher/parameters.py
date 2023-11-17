@@ -9,7 +9,9 @@ class geoprocessing:
 @dataclasses.dataclass
 class data_quality:
     max_speed: float = 36.1  # in m/s
-    max_speed_time: float = 120  # in seconds   --> time that the truck needs to be above the speed limit to be scraped
+    max_speed_time: float = (
+        120  # in seconds   --> time that the vehicle needs to be above the speed limit to be scraped
+    )
     minimum_pings: int = 15  # Minimum number of pings that the vehicle needs to have to be considered valid
     minimum_coverage: float = 500  # Minimum diagonal of the Bounding box (m) defined by the GPS pings in the trace
     maximum_jittery: float = 1  # Maximum distance for which a vehicle can move within the same timestamp (m)
@@ -40,6 +42,5 @@ class DeliveryStop:  # Time in seconds
 class Parameters:
     geoprocessing = geoprocessing()
     data_quality = data_quality()
-    stop_algorithm = "maximum_space"
     stop_finding = DeliveryStop()
     map_matching = map_matching()

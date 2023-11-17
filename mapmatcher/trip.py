@@ -10,9 +10,8 @@ from shapely.geometry import LineString
 from shapely.ops import linemerge
 
 from mapmatcher.network import Network
-
+from mapmatcher.linebearing import bearing_for_gps
 from .parameters import Parameters
-from .linebearing import link_bearing
 
 
 class Trip:
@@ -29,12 +28,7 @@ class Trip:
 
     """
 
-    def __init__(
-        self,
-        gps_trace: gpd.GeoDataFrame,
-        parameters: Parameters,
-        network: Network
-    ):
+    def __init__(self, gps_trace: gpd.GeoDataFrame, parameters: Parameters, network: Network):
         # Fields necessary for running the algorithm
         """
         :Arguments:
@@ -65,7 +59,6 @@ class Trip:
         self.__pre_process()
 
         # Indicators to show if we have the optional fields in the data
-        self.has_heading = "heading" in gps_trace
 
     def map_match(self, ignore_errors=False):
         """
@@ -90,24 +83,23 @@ class Trip:
         res.prepare(self.network.graph)
 
         # TODO: REPLACE WITH GOING FROM THE UPSTREAM (stop1) NODE OF THE FIRST LINK MATCH AND THE LINK DOWNSTREAM (stop2) OF THE LAST LINK MATCH
-        
+
         # We first attempt a direct route between first and last pings
         res.compute_path(self.stop1[0], self.stop2[-1])
-        self.__mm_results = pd.DataFrame({"links": res.path, "direction": res.path_link_directions, "milepost": res.milepost[1:]})
+        self.__mm_results = pd.DataFrame(
+            {"links": res.path, "direction": res.path_link_directions, "milepost": res.milepost[1:]}
+        )
         par = self.parameters.map_matching
         waypoints = 0
         while self.match_quality < par.minimum_match_quality and waypoints < par.maximum_waypoints:
-                
             links = []
             directions = []
             mileposts = []
             position = 0
 
-
-            #TODO: MAKE THIS LOOK IN A WAY WHERE WE GET A WAYPOINT FROM THE NODES NOT MATCHED AND ADD THEM TO THE MIX
+            # TODO: MAKE THIS LOOK IN A WAY WHERE WE GET A WAYPOINT FROM THE NODES NOT MATCHED AND ADD THEM TO THE MIX
             break
             waypoints += 1
-
 
     @property
     def success(self):
@@ -170,6 +162,8 @@ class Trip:
         if len(self.trace.trace_id.unique()) > 1:
             raise ValueError("trace_id is not unique")
 
+        self.trace = self.trace.assign(tangent_bearing=bearing_for_gps(self.trace))
+
         self.id = self.trace.trace_id.values[0]
 
         self.trace.sort_values(by=["timestamp"], inplace=True)
@@ -230,31 +224,17 @@ class Trip:
     def __network_links(self):
         if self.__candidate_links.shape[0]:
             return
-        cand = self.network.links.sjoin_nearest(
-            self.trace, distance_col="ping_dist", max_distance=self.parameters.map_matching.buffer_size
-        ).reset_index()
+        pars = self.parameters.map_matching
+        cand = self.network.links.sjoin_nearest(self.trace, distance_col="ping_dist", max_distance=pars.buffer_size)
 
+        # Remove candidates that are above the allowed speed
         if self.network.has_speed:
-            cand = cand[cand[self.network._speed_field] <= cand.trace_segment_speed]
+            cand = cand[cand[self.network._speed_field] >= cand.trace_segment_speed]
 
-        if not self.has_heading:
-            self.__candidate_links = cand.link_id.to_numpy()
-            return
-        
-        nearest_nodes = self.network.nodes.sjoin_nearest(
-            self.trace, distance_col="ping_dist", max_distance=self.parameters.map_matching.buffer_size
-        ).reset_index()
-        nodes_set = nearest_nodes.node_id.tolist()
-
-        net_links = self.network.graph.network
-
-        selected_links = net_links[(net_links["a_node"].isin(nodes_set)) | (net_links["b_node"].isin(nodes_set))].copy()
-        selected_links = selected_links[["link_id", "a_node", "b_node"]]
-        # selected_links.insert(3, "direction", 0)
-        # selected_links.loc[selected_links["b_node"].isin(nodes_set), "direction"] = 1
-        
-        cand = cand[cand["link_id"].isin(selected_links.link_id)]
-        cand = cand.merge(selected_links, on="link_id")
+        # Dois campos de bearing:
+        #   1. net_link_az (computado durante a construcao do objeto Network)
+        #   2. tangent_bearing (computado par ao GPS trace durante a construcao do objeto Trip)
+        #  Levar em consideracao o parametro **heading_tolerance**
 
         selected_traces = self.trace[self.trace["gps_fix_id"].isin(cand["gps_fix_id"].unique())].copy()
         cand["heading"] = cand.apply(link_bearing, axis=1)
@@ -263,7 +243,7 @@ class Trip:
         # TODO: Many links would've been matched to the same ping, BUT ONLY ONE CAN EXIST!!! [2]
         self.__candidate_links = cand.link_id.to_numpy()
 
-        #TODO: FOR EACH PING, RETURN THE ORIGIN AND DESTINATION NODES OF THE LINK IT WAS MATCHED TO - ORIGIN IS THE LINK UPSTREAM AND DESTINATION IS DOWNSTREAM
+        # TODO: FOR EACH PING, RETURN THE ORIGIN AND DESTINATION NODES OF THE LINK IT WAS MATCHED TO - ORIGIN IS THE LINK UPSTREAM AND DESTINATION IS DOWNSTREAM
         self.stop1 = []
         self.stop2 = []
 
@@ -276,4 +256,4 @@ class Trip:
 
         all_stops = self.trace.shape[0]
 
-        return round((stops_in_buffer / all_stops)*100, 2)
+        return round((stops_in_buffer / all_stops) * 100, 2)

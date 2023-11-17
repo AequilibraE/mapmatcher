@@ -1,7 +1,9 @@
-import geopandas as gpd
 import numpy as np
+import pandas as pd
+import geopandas as gpd
 from aequilibrae import Graph
 
+from mapmatcher.linebearing import bearing_for_lines
 from mapmatcher.parameters import Parameters
 
 
@@ -37,6 +39,12 @@ class Network:
         self.links.to_crs(parameters.geoprocessing.projected_crs, inplace=True)
         self.nodes = nodes if nodes.index.name == "node_id" else nodes.set_index("node_id", drop=True)
         self.nodes.to_crs(parameters.geoprocessing.projected_crs, inplace=True)
+
+        if "a_node" not in self.links:
+            self.links = self.links.join(
+                pd.DataFrame(graph.network[["link_id", "a_node", "b_node"]]).set_index(["link_id"])
+            )
+        self.links = self.links.append(net_link_az=bearing_for_lines(self.links))
 
     @property
     def has_speed(self) -> bool:
