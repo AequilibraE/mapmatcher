@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from aequilibrae.paths.results import PathResults
 from shapely.geometry import LineString
-from shapely.ops import linemerge
+from shapely.ops import linemerge, nearest_points
 
 from mapmatcher.network import Network
 from mapmatcher.linebearing import bearing_for_gps
@@ -204,8 +204,6 @@ class Trip:
         self.trace["trace_segment_speed"] = speed
         self.trace.trace_segment_speed.fillna(-1)
 
-        self.trace[["s_lat", "s_lon"]] = self.trace[["latitude", "longitude"]].shift(-1)
-
         # Verify data quality
         w = int(self.trace.trace_segment_traveled_time[self.trace.trace_segment_speed > dqp.max_speed].sum())
         if w > dqp.max_speed_time:
@@ -215,6 +213,9 @@ class Trip:
             ].cumsum()
             if too_fast.max() > dqp.max_speed_time:
                 self._error_type += f"  Max speed surpassed for {w} seconds"
+
+        # Adds the GPS pings sequence
+        self.trace["sequence"] = np.arange(1, self.trace.shape[0] + 1)
 
     def compute_stops(self):
         """Compute stops."""
@@ -235,17 +236,33 @@ class Trip:
         #   1. net_link_az (computado durante a construcao do objeto Network)
         #   2. tangent_bearing (computado par ao GPS trace durante a construcao do objeto Trip)
         #  Levar em consideracao o parametro **heading_tolerance**
-
-        selected_traces = self.trace[self.trace["gps_fix_id"].isin(cand["gps_fix_id"].unique())].copy()
-        cand["heading"] = cand.apply(link_bearing, axis=1)
+        
+        cand["diff"] = abs(cand["net_link_az"] - cand["tangent_bearing"])
+        cand.insert(cand.shape[1], "threshold1", 0)
+        cand.insert(cand.shape[1], "threshold2", 0)
 
         # TODO: Add consideration of heading [1]
+        tol = self.parameters.map_matching.heading_tolerance
+        cand.loc[cand["diff"] <= tol, "threshold1"] = 1
+        cand.loc[(cand["diff"] >= 180 - tol) & (cand["diff"] <= 180 + tol), "threshold2"] = 1
+
         # TODO: Many links would've been matched to the same ping, BUT ONLY ONE CAN EXIST!!! [2]
-        self.__candidate_links = cand.link_id.to_numpy()
+        # [RI]: Selects the closest link
+        selected_links = cand[(cand["threshold1"] == 1) |(cand["threshold2"] == 1)].copy()
+        selected_links.sort_values(by=["sequence", "ping_dist"], inplace=True)
+        selected_links.drop_duplicates(subset=["sequence"], keep="first", inplace=True)
+        
+        self.__candidate_links = selected_links.index.to_numpy()
+        # Add additional links? - Case there is only one link close to the ping, and it was not selected
+        # by the bearing threshold.
 
         # TODO: FOR EACH PING, RETURN THE ORIGIN AND DESTINATION NODES OF THE LINK IT WAS MATCHED TO - ORIGIN IS THE LINK UPSTREAM AND DESTINATION IS DOWNSTREAM
-        self.stop1 = []
-        self.stop2 = []
+        selected_links = selected_links.assign(upstream_node=self.__get_upstream_node(selected_links))
+
+        # upstream
+        self.stop1 = selected_links["b_node"].where(selected_links["upstream_node"] == 0, selected_links["a_node"]).tolist()
+        # downstream
+        self.stop2 = selected_links["b_node"].where(selected_links["upstream_node"] > 0, selected_links["a_node"]).tolist()
 
     @property
     def match_quality(self):
@@ -256,4 +273,22 @@ class Trip:
 
         all_stops = self.trace.shape[0]
 
-        return round((stops_in_buffer / all_stops) * 100, 2)
+        return round(stops_in_buffer / all_stops, 4)
+
+    def __get_upstream_node(self, sel_links):
+        """Returns a list with the first node visited in the link."""
+        max_ping = self.trace["sequence"].max()
+        selected_sequence = sel_links["sequence"].unique().tolist()
+        selected_sequence.sort()
+        upstream_node = []
+        for _, val in enumerate(selected_sequence):
+            seq = val + 1 if val < max_ping else val
+            point = self.trace.loc[self.trace["sequence"] == seq].geometry.values[0]
+            link = sel_links.loc[sel_links["sequence"] == val].geometry.values[0]
+            link = link.boundary
+
+            near_point = nearest_points(link, point)[0]
+
+            upstream_node.append(list(link.geoms).index(near_point))
+        
+        return upstream_node
