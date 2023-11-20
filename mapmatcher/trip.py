@@ -12,6 +12,7 @@ from shapely.ops import linemerge, nearest_points
 from mapmatcher.network import Network
 from mapmatcher.linebearing import bearing_for_gps
 from .parameters import Parameters
+from .utils import check_lines_aligned
 
 
 class Trip:
@@ -215,7 +216,7 @@ class Trip:
                 self._error_type += f"  Max speed surpassed for {w} seconds"
 
         # Adds the GPS pings sequence
-        self.trace["sequence"] = np.arange(1, self.trace.shape[0] + 1)
+        self.trace["ping_sequence"] = np.arange(1, self.trace.shape[0] + 1)
 
     def compute_stops(self):
         """Compute stops."""
@@ -232,25 +233,12 @@ class Trip:
         if self.network.has_speed:
             cand = cand[cand[self.network._speed_field] >= cand.trace_segment_speed]
 
-        # Dois campos de bearing:
-        #   1. net_link_az (computado durante a construcao do objeto Network)
-        #   2. tangent_bearing (computado par ao GPS trace durante a construcao do objeto Trip)
-        #  Levar em consideracao o parametro **heading_tolerance**
-        
-        cand["diff"] = abs(cand["net_link_az"] - cand["tangent_bearing"])
-        cand.insert(cand.shape[1], "threshold1", 0)
-        cand.insert(cand.shape[1], "threshold2", 0)
+        cand_acceptable = check_lines_aligned(cand, pars.heading_tolerance)
+        filtered = cand.isin(cand_acceptable.index)
 
-        # TODO: Add consideration of heading [1]
-        tol = self.parameters.map_matching.heading_tolerance
-        cand.loc[cand["diff"] <= tol, "threshold1"] = 1
-        cand.loc[(cand["diff"] >= 180 - tol) & (cand["diff"] <= 180 + tol), "threshold2"] = 1
+        filtered = filtered.loc[filtered.groupby(["ping_sequence"]).ping_dist.idxmin()][0]
 
-        # TODO: Many links would've been matched to the same ping, BUT ONLY ONE CAN EXIST!!! [2]
-        # [RI]: Selects the closest link
-        selected_links = cand[(cand["threshold1"] == 1) |(cand["threshold2"] == 1)].copy()
-        selected_links.sort_values(by=["sequence", "ping_dist"], inplace=True)
-        selected_links.drop_duplicates(subset=["sequence"], keep="first", inplace=True)
+
         
         self.__candidate_links = selected_links.index.to_numpy()
         # Add additional links? - Case there is only one link close to the ping, and it was not selected
@@ -277,14 +265,14 @@ class Trip:
 
     def __get_upstream_node(self, sel_links):
         """Returns a list with the first node visited in the link."""
-        max_ping = self.trace["sequence"].max()
-        selected_sequence = sel_links["sequence"].unique().tolist()
+        max_ping = self.trace["ping_sequence"].max()
+        selected_sequence = sel_links["ping_sequence"].unique().tolist()
         selected_sequence.sort()
         upstream_node = []
         for _, val in enumerate(selected_sequence):
             seq = val + 1 if val < max_ping else val
-            point = self.trace.loc[self.trace["sequence"] == seq].geometry.values[0]
-            link = sel_links.loc[sel_links["sequence"] == val].geometry.values[0]
+            point = self.trace.loc[self.trace["ping_sequence"] == seq].geometry.values[0]
+            link = sel_links.loc[sel_links["ping_sequence"] == val].geometry.values[0]
             link = link.boundary
 
             near_point = nearest_points(link, point)[0]
