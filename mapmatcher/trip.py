@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 from aequilibrae.paths.results import PathResults
 from shapely.geometry import LineString
-from shapely.ops import linemerge, nearest_points
+from shapely.ops import linemerge
 
-from mapmatcher.network import Network
 from mapmatcher.linebearing import bearing_for_gps
+from mapmatcher.network import Network
 from .parameters import Parameters
 from .utils import check_lines_aligned
 
@@ -48,7 +48,7 @@ class Trip:
 
         self.parameters = parameters
         self.stops: Optional[gpd.GeoDataFrame] = None
-        self._stop_nodes = []
+        self.__waypoints = []
         self.warnings = []
         self.__geo_path = LineString([])
         self.__mm_results = pd.DataFrame([], columns=["links", "direction", "milepost"])
@@ -188,7 +188,7 @@ class Trip:
             )
             agg = df.groupby(["ping_posix_time"]).agg(["min", "max", "count"])
             jitter = np.sqrt((agg.x["min"] - agg.x["max"]) ** 2 + (agg.y["min"] - agg.y["max"]) ** 2)
-            if np.max(jitter) > (dqp.maximum_jittery):
+            if np.max(jitter) > dqp.maximum_jittery:
                 self._error_type += f"  Data is jittery. Same timestamp {np.max(jitter):,.2} m apart."
 
             self.trace.drop_duplicates(subset=["ping_posix_time"], inplace=True, keep="first")
@@ -238,19 +238,17 @@ class Trip:
 
         filtered = filtered.loc[filtered.groupby(["ping_sequence"]).ping_dist.idxmin()][0]
 
+        self.__candidate_links = filtered.index.to_numpy()
 
-        
-        self.__candidate_links = selected_links.index.to_numpy()
-        # Add additional links? - Case there is only one link close to the ping, and it was not selected
-        # by the bearing threshold.
+        # Now we get the first/last links
+        first_last = self.trace.iloc[[0, -1]].sjoin_nearest(self.network.links)
 
-        # TODO: FOR EACH PING, RETURN THE ORIGIN AND DESTINATION NODES OF THE LINK IT WAS MATCHED TO - ORIGIN IS THE LINK UPSTREAM AND DESTINATION IS DOWNSTREAM
-        selected_links = selected_links.assign(upstream_node=self.__get_upstream_node(selected_links))
-
-        # upstream
-        self.stop1 = selected_links["b_node"].where(selected_links["upstream_node"] == 0, selected_links["a_node"]).tolist()
-        # downstream
-        self.stop2 = selected_links["b_node"].where(selected_links["upstream_node"] > 0, selected_links["a_node"]).tolist()
+        cols = ["net_link_az", "tangent_bearing"]
+        for _, rec in first_last.iterrows():
+            if max(rec[cols]) - min(rec[cols]) > 90:
+                self.__waypoints.append(rec.b_node)
+            else:
+                self.__waypoints.append(rec.a_node)
 
     @property
     def match_quality(self):
@@ -262,21 +260,3 @@ class Trip:
         all_stops = self.trace.shape[0]
 
         return round(stops_in_buffer / all_stops, 4)
-
-    def __get_upstream_node(self, sel_links):
-        """Returns a list with the first node visited in the link."""
-        max_ping = self.trace["ping_sequence"].max()
-        selected_sequence = sel_links["ping_sequence"].unique().tolist()
-        selected_sequence.sort()
-        upstream_node = []
-        for _, val in enumerate(selected_sequence):
-            seq = val + 1 if val < max_ping else val
-            point = self.trace.loc[self.trace["ping_sequence"] == seq].geometry.values[0]
-            link = sel_links.loc[sel_links["ping_sequence"] == val].geometry.values[0]
-            link = link.boundary
-
-            near_point = nearest_points(link, point)[0]
-
-            upstream_node.append(list(link.geoms).index(near_point))
-        
-        return upstream_node
