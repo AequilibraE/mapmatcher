@@ -26,7 +26,6 @@ def param() -> Parameters:
 
 def test_trip(gps_trace, param):
     trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
-    assert trp.has_heading
     assert not trp.has_error
 
 

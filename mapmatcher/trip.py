@@ -83,10 +83,9 @@ class Trip:
         res = PathResults()
         res.prepare(self.network.graph)
 
-        # TODO: REPLACE WITH GOING FROM THE UPSTREAM (stop1) NODE OF THE FIRST LINK MATCH AND THE LINK DOWNSTREAM (stop2) OF THE LAST LINK MATCH
 
         # We first attempt a direct route between first and last pings
-        res.compute_path(self.stop1[0], self.stop2[-1])
+        res.compute_path(self.__waypoints[0], self.__waypoints[-1])
         self.__mm_results = pd.DataFrame(
             {"links": res.path, "direction": res.path_link_directions, "milepost": res.milepost[1:]}
         )
@@ -200,10 +199,8 @@ class Trip:
         ttime = (self.trace["timestamp"] - self.trace["timestamp"].shift(1)).dt.seconds.astype(float)
         speed = dist / ttime
         speed[0] = 0
-        self.trace["trace_segment_dist"] = dist.fillna(0)
-        self.trace["trace_segment_traveled_time"] = ttime.fillna(0)
-        self.trace["trace_segment_speed"] = speed
-        self.trace.trace_segment_speed.fillna(-1)
+        self.trace = self.trace.assign(trace_segment_dist=dist.fillna(0), trace_segment_traveled_time=ttime.fillna(0),
+                                       trace_segment_speed=speed.fillna(-1))
 
         # Verify data quality
         w = int(self.trace.trace_segment_traveled_time[self.trace.trace_segment_speed > dqp.max_speed].sum())
@@ -216,7 +213,7 @@ class Trip:
                 self._error_type += f"  Max speed surpassed for {w} seconds"
 
         # Adds the GPS pings sequence
-        self.trace["ping_sequence"] = np.arange(1, self.trace.shape[0] + 1)
+        self.trace = self.trace.assign(ping_sequence=np.arange(1, self.trace.shape[0] + 1))
 
     def compute_stops(self):
         """Compute stops."""
@@ -234,9 +231,9 @@ class Trip:
             cand = cand[cand[self.network._speed_field] >= cand.trace_segment_speed]
 
         cand_acceptable = check_lines_aligned(cand, pars.heading_tolerance)
-        filtered = cand.isin(cand_acceptable.index)
+        filtered = cand.loc[cand[cand_acceptable.aligned == 1].index, :]
 
-        filtered = filtered.loc[filtered.groupby(["ping_sequence"]).ping_dist.idxmin()][0]
+        filtered = filtered.loc[filtered.groupby(["ping_sequence"]).ping_dist.idxmin()]
 
         self.__candidate_links = filtered.index.to_numpy()
 
@@ -255,8 +252,6 @@ class Trip:
         """Assesses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         buffer = self.parameters.map_matching.buffer_size
 
-        stops_in_buffer = self.trace.intersects(self.path_shape.buffer(buffer)).sum()
+        stops_in_buffer = self.trace.intersects(self.path_shape.buffer(buffer))
 
-        all_stops = self.trace.shape[0]
-
-        return round(stops_in_buffer / all_stops, 4)
+        return stops_in_buffer.sum() / self.trace.shape[0]

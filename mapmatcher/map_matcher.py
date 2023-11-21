@@ -114,13 +114,14 @@ class MapMatcher:
         for trace_id, gdf in self.__traces.groupby(["trace_id"]):
             self.trips.append(Trip(gps_trace=gdf, parameters=self.parameters, network=self.network))
 
-    def map_match(self):
+    def map_match(self, ignore_errors=False):
         """Executes map-matching."""
         self._build_trips()
         self.network._orig_crs = self.__orig_crs
         success = 0
         for trip in self.trips:  # type: Trip
-            trip.map_match()
+            trip.map_match(ignore_errors)
             success += trip.success
+
         logging.critical(f"Succeeded:{success:,}")
         logging.critical(f"Failed:{len(self.trips) - success:,}")
