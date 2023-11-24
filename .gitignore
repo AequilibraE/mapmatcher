@@ -6,7 +6,7 @@ docs/source/_auto_examples/*
 docs/source/_examples/*
 docs/build/*
 dist/*
-.pypirc
+./.pypirc
 
 # User-specific stuff:
 .idea/**/workspace.xml
