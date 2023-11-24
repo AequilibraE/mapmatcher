@@ -24,8 +24,8 @@ class MapMatcher:
         >>> from mapmatcher import MapMatcher
 
         >>> matcher = MapMatcher.from_aequilibrae(project, "c")
-        >>> mmatcher.load_gps_traces(nauru_gps)
-        >>> mmatcher.execute()
+        >>> matcher.load_gps_traces(nauru_gps)
+        >>> matcher.map_match()
     """
 
     __mandatory_fields = ["trace_id", "timestamp"]
