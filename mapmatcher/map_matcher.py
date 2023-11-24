@@ -1,5 +1,7 @@
 import logging
 from os import PathLike
+from pathlib import Path
+from tempfile import gettempdir
 from typing import List, Optional, Union
 
 import geopandas as gpd
@@ -7,6 +9,7 @@ import numpy as np
 import pandas as pd
 from aequilibrae import Project
 from aequilibrae.paths import Graph
+from tqdm import tqdm
 
 from .network import Network
 from .parameters import Parameters
@@ -25,7 +28,7 @@ class MapMatcher:
         >>> mmatcher.execute()
     """
 
-    __mandatory_fields = ["trace_id", "latitude", "longitude", "timestamp"]
+    __mandatory_fields = ["trace_id", "timestamp"]
 
     def __init__(self):
         self.__orig_crs = 4326
@@ -34,6 +37,7 @@ class MapMatcher:
         self.output_folder = None
         self.__traces: gpd.GeoDataFrame
         self.parameters = Parameters()
+        self.__log_folder = Path(gettempdir())
 
     @staticmethod
     def from_aequilibrae(proj: Project, mode: str):
@@ -111,17 +115,45 @@ class MapMatcher:
 
     def _build_trips(self):
         self.trips.clear()
-        for trace_id, gdf in self.__traces.groupby(["trace_id"]):
+        for _, gdf in self.__traces.groupby(["trace_id"]):
             self.trips.append(Trip(gps_trace=gdf, parameters=self.parameters, network=self.network))
 
-    def map_match(self, ignore_errors=False):
+    def map_match(self, ignore_errors=False, robust=True):
         """Executes map-matching."""
+        self.__logger()
         self._build_trips()
         self.network._orig_crs = self.__orig_crs
         success = 0
-        for trip in self.trips:  # type: Trip
-            trip.map_match(ignore_errors)
-            success += trip.success
+        if robust:
+            for trip in tqdm(self.trips, "Map matching trips"):  # type: Trip
+                try:
+                    trip.map_match(ignore_errors)
+                    success += trip.success
+                finally:
+                    logging.getLogger("mapmatcher").critical(f"{trip.id} failed to map-match with critical error")
+        else:
+            for trip in tqdm(self.trips, "Map matching trips"):  # type: Trip
+                trip.map_match(ignore_errors)
+                success += trip.success
 
         logging.critical(f"Succeeded:{success:,}")
         logging.critical(f"Failed:{len(self.trips) - success:,}")
+
+    def set_logging_folder(self, folder):
+        self.__log_folder = Path(folder)
+
+    def __logger(self):
+        logger = logging.getLogger("mapmatcher")
+        logger.setLevel(1000)
+        for h in [h for h in logger.handlers if h.name and "mapmatcherfile" == h.name]:
+            h.close()
+            logger.removeHandler(h)
+
+        log_path = self.__log_folder / "mapmatcher.log"
+
+        FORMATTER = logging.Formatter("%(asctime)s;%(levelname)s ; %(message)s", datefmt="%H:%M:%S:")
+        ch = logging.FileHandler(log_path)
+        ch.setFormatter(FORMATTER)
+        ch.set_name("mapmatcherfile")
+        ch.setLevel(logging.INFO)
+        logger.addHandler(ch)

@@ -41,7 +41,6 @@ def network() -> Network:
 
 def test_mapmatcher(gps_traces, network):
     mm = MapMatcher()
-    mm.parameters.map_matching.buffer_size = 25
     mm.load_network(network.graph, network.links, network.nodes)
     mm.load_gps_traces(gps_traces)
     mm.map_match(True)

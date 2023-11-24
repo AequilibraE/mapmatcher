@@ -33,18 +33,18 @@ def test_fail_on_jitter(gps_trace, param):
     param.data_quality.maximum_jittery = 0.01
     trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
     assert trp.has_error
-    assert "jitter" in trp._error_type
+    assert "jitter" in trp._err
 
 
 def test_fail_on_speed_time(gps_trace, param):
     param.data_quality.max_speed_time = 0
     trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
     assert trp.has_error
-    assert "surpassed" in trp._error_type
+    assert "surpassed" in trp._err
 
 
 def test_fail_on_speed_time2(gps_trace, param):
     param.data_quality.max_speed = 120 / 3.6
     trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
     assert trp.has_error
-    assert "surpassed" in trp._error_type
+    assert "surpassed" in trp._err

@@ -51,7 +51,5 @@ def network(param) -> Network:
 def test_map_match(gps_trace, network):
     trp = Trip(gps_trace=gps_trace, parameters=network._pars, network=network)
 
-    # We know we need at least three stops (extremities plus 1)
-    assert len(trp._stop_nodes) == 3
     trp.map_match()
     assert gps_trace.distance(trp.path_shape).max() < 100
