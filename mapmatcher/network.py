@@ -1,7 +1,9 @@
-import geopandas as gpd
 import numpy as np
+import pandas as pd
+import geopandas as gpd
 from aequilibrae import Graph
 
+from mapmatcher.linebearing import bearing_for_lines
 from mapmatcher.parameters import Parameters
 
 
@@ -33,10 +35,24 @@ class Network:
         self._pars = parameters
         self.graph = graph
         self._orig_crs = links.crs
+        self.__graph_cost = np.array(self.graph.cost, copy=True)
+
+        links = links.to_crs(parameters.geoprocessing.projected_crs)
+        if links._geometry_column_name != "geometry":
+            links.rename_geometry("geometry", inplace=True)
+
+        nodes = nodes.to_crs(parameters.geoprocessing.projected_crs)
+        if nodes._geometry_column_name != "geometry":
+            nodes.rename_geometry("geometry", inplace=True)
+
         self.links = links if links.index.name == "link_id" else links.set_index("link_id", drop=True)
-        self.links.to_crs(parameters.geoprocessing.projected_crs, inplace=True)
         self.nodes = nodes if nodes.index.name == "node_id" else nodes.set_index("node_id", drop=True)
-        self.nodes.to_crs(parameters.geoprocessing.projected_crs, inplace=True)
+
+        if "a_node" not in self.links:
+            self.links = self.links.join(
+                pd.DataFrame(graph.network[["link_id", "a_node", "b_node"]]).set_index(["link_id"])
+            )
+        self.links = self.links.assign(net_link_az=bearing_for_lines(self.links))
 
     @property
     def has_speed(self) -> bool:
@@ -52,9 +68,8 @@ class Network:
     def discount_graph(self, links: np.ndarray):
         """Updates the costs for each link in the graph."""
         self.graph.graph.loc[self.graph.graph.link_id.isin(links), "distance"] *= self._pars.map_matching.cost_discount
-        self.graph.set_graph("distance")
+        self.graph.cost = self.graph.graph.distance.to_numpy()
 
     def reset_graph(self):
         """Resets the current graph."""
-        self.graph.prepare_graph(self.graph.centroids)
-        self.graph.set_graph("distance")
+        self.graph.graph.loc[:, "distance"] = self.__graph_cost

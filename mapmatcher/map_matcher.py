@@ -1,5 +1,7 @@
-from os import PathLike
 import logging
+from os import PathLike
+from pathlib import Path
+from tempfile import gettempdir
 from typing import List, Optional, Union
 
 import geopandas as gpd
@@ -7,6 +9,7 @@ import numpy as np
 import pandas as pd
 from aequilibrae import Project
 from aequilibrae.paths import Graph
+from tqdm import tqdm
 
 from .network import Network
 from .parameters import Parameters
@@ -21,21 +24,20 @@ class MapMatcher:
         >>> from mapmatcher import MapMatcher
 
         >>> matcher = MapMatcher.from_aequilibrae(project, "c")
-        >>> mmatcher.load_gps_traces(nauru_gps)
-        >>> mmatcher.execute()
+        >>> matcher.load_gps_traces(nauru_gps)
+        >>> matcher.map_match()
     """
 
-    __mandatory_fields = ["trace_id", "latitude", "longitude", "timestamp"]
+    __mandatory_fields = ["trace_id", "timestamp"]
 
     def __init__(self):
         self.__orig_crs = 4326
         self.network: Network() = None
         self.trips: List[Trip] = []
         self.output_folder = None
-        self.__usr_stops = False
         self.__traces: gpd.GeoDataFrame
-        self.__stops: Optional[gpd.GeoDataFrame] = None
         self.parameters = Parameters()
+        self.__log_folder = Path(gettempdir())
 
     @staticmethod
     def from_aequilibrae(proj: Project, mode: str):
@@ -67,17 +69,6 @@ class MapMatcher:
             **output_folder** (:obj:`str`): path to folder
         """
         self.output_folder = output_folder
-
-    def set_stop_algorithm(self, stop_algorithm):
-        """Sets the stop algorithm.
-
-        :Arguments:
-
-            **stop_algorithm** (:obj:`str`)
-        """
-        if stop_algorithm not in self.parameters.algorithm_parameters:
-            raise ValueError(f"Unknown Stop algorithm: {stop_algorithm}")
-        self.parameters.stop_algorithm = stop_algorithm
 
     def load_network(self, graph: Graph, links: gpd.GeoDataFrame, nodes: Optional[gpd.GeoDataFrame] = None):
         """Loads the project network.
@@ -122,37 +113,47 @@ class MapMatcher:
 
         self.__traces = traces.to_crs(self.parameters.geoprocessing.projected_crs)
 
-    def load_stops(self, stops: Union[gpd.GeoDataFrame, PathLike]):
-        """
-        Loads the stops.
-
-        :Arguments:
-
-            **stops** (:obj:`Union[gpd.GeoDataFrame, PathLike]`): GeoDataFrame or PahLike containing the vehicle stops.
-
-        """
-        if isinstance(stops, gpd.GeoDataFrame):
-            self.__stops = stops.to_crs(4326)
-        else:
-            stops = pd.read_csv(stops)
-            self.__stops = gpd.GeoDataFrame(
-                stops, geometry=gpd.points_from_xy(stops.longitude, stops.latitude), crs="EPSG:4326"
-            )
-        self.__usr_stops = True
-
     def _build_trips(self):
         self.trips.clear()
-        for trace_id, gdf in self.__traces.groupby(["trace_id"]):
-            stops = gpd.GeoDataFrame([]) if not self.__usr_stops else self.__stops[self.__stops.trace_id == trace_id]
-            self.trips.append(Trip(gps_trace=gdf, stops=stops, parameters=self.parameters, network=self.network))
+        for _, gdf in self.__traces.groupby(["trace_id"]):
+            self.trips.append(Trip(gps_trace=gdf, parameters=self.parameters, network=self.network))
 
-    def execute(self):
+    def map_match(self, ignore_errors=False, robust=True):
         """Executes map-matching."""
+        self.__logger()
         self._build_trips()
         self.network._orig_crs = self.__orig_crs
         success = 0
-        for trip in self.trips:  # type: Trip
-            trip.map_match()
-            success += trip.success
+        if robust:
+            for trip in tqdm(self.trips, "Map matching trips"):  # type: Trip
+                try:
+                    trip.map_match(ignore_errors)
+                    success += trip.success
+                finally:
+                    logging.getLogger("mapmatcher").critical(f"{trip.id} failed to map-match with critical error")
+        else:
+            for trip in tqdm(self.trips, "Map matching trips"):  # type: Trip
+                trip.map_match(ignore_errors)
+                success += trip.success
+
         logging.critical(f"Succeeded:{success:,}")
         logging.critical(f"Failed:{len(self.trips) - success:,}")
+
+    def set_logging_folder(self, folder):
+        self.__log_folder = Path(folder)
+
+    def __logger(self):
+        logger = logging.getLogger("mapmatcher")
+        logger.setLevel(1000)
+        for h in [h for h in logger.handlers if h.name and "mapmatcherfile" == h.name]:
+            h.close()
+            logger.removeHandler(h)
+
+        log_path = self.__log_folder / "mapmatcher.log"
+
+        FORMATTER = logging.Formatter("%(asctime)s;%(levelname)s ; %(message)s", datefmt="%H:%M:%S:")
+        ch = logging.FileHandler(log_path)
+        ch.setFormatter(FORMATTER)
+        ch.set_name("mapmatcherfile")
+        ch.setLevel(logging.INFO)
+        logger.addHandler(ch)

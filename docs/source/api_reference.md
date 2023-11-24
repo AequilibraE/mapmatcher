@@ -94,7 +94,7 @@ from mapmatcher import MapMatcher
 
 matcher = MapMatcher.from_aequilibrae(project, "c")
 mmatcher.load_gps_traces(nauru_gps)
-mmatcher.execute()
+mmatcher.map_match()
 
 ``` 
 ### **Methods:**
@@ -116,5 +116,5 @@ Loads the GPS traces to the map-matcher.
 #### `load_stops(stops: Union[gpd.GeoDataFrame, PathLike])`
 Loads the stops.
 
-#### `execute()`
+#### `map_match()`
 Executes map-matching.
