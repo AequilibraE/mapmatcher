@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "aequilibrae", "geopandas>=0.14.1", "wheel", "scipy", "tqdm"]
+requires = ["setuptools>=61.0", "aequilibrae", "geopandas>=0.14.1", "wheel", "scipy"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -23,12 +23,13 @@ classifiers = [
 
 dependencies = [
     'aequilibrae',
-    'geopandas'
+    'geopandas',
+    'tqdm'
 ]
 
 [project.optional-dependencies]
 testing = ['ruff', 'black', 'isort', 'pytest']
-build = ["setuptools", "wheel", "build"]
+build = ["setuptools", "wheel", "build", "tqdm"]
 auxiliary = ['folium', 'notebook']
 docs = ["pyaml",
         "enum34>=1.1.6",
@@ -45,8 +46,7 @@ docs = ["pyaml",
         "nbsphinx",
         "ipython_genutils",
         "folium",
-        "sphinxcontrib-youtube",
-        "tqdm"]
+        "sphinxcontrib-youtube"]
 dev = ['mapmatcher[testing, auxiliary, build, docs]']
 
 [project.urls]
