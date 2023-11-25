@@ -1,4 +1,6 @@
 import logging
+import multiprocessing as mp
+from math import ceil
 from os import PathLike
 from pathlib import Path
 from tempfile import gettempdir
@@ -13,6 +15,7 @@ from tqdm import tqdm
 
 from .network import Network
 from .parameters import Parameters
+from .run_chunk import run_trips
 from .trip import Trip
 
 
@@ -118,13 +121,27 @@ class MapMatcher:
         for _, gdf in self.__traces.groupby(["trace_id"]):
             self.trips.append(Trip(gps_trace=gdf, parameters=self.parameters, network=self.network))
 
-    def map_match(self, ignore_errors=False, robust=True):
-        """Executes map-matching."""
-        self.__logger()
-        self._build_trips()
+    def map_match(self, ignore_errors=False, paralell_threads: int = 0):
+        """Executes map-matching.
+
+        :Arguments:
+            **ignore_errors** (:obj:`bool`): Attempts to perform map-matching even when the data does not meet all
+            data quality criteria
+
+            **paralell_threads** (:obj:`int`, optional): Number of CPU threads to use. Defaults to all
+
+        :Returns:
+
+            *object* (:obj:`np.ndarray`): NumPy array
+        """
         self.network._orig_crs = self.__orig_crs
         success = 0
-        if robust:
+        if paralell_threads <= 0:
+            paralell_threads = max(1, mp.cpu_count() - int(paralell_threads))
+        if paralell_threads == 1:
+            self.__logger()
+            logging.critical("Building up data structures")
+            self._build_trips()
             for trip in tqdm(self.trips, "Map matching trips"):  # type: Trip
                 try:
                     trip.map_match(ignore_errors)
@@ -132,12 +149,45 @@ class MapMatcher:
                 finally:
                     logging.getLogger("mapmatcher").critical(f"{trip.id} failed to map-match with critical error")
         else:
-            for trip in tqdm(self.trips, "Map matching trips"):  # type: Trip
-                trip.map_match(ignore_errors)
-                success += trip.success
+            logging.getLogger("mapmatcher").info("Preparing multi-processing")
 
-        logging.critical(f"Succeeded:{success:,}")
-        logging.critical(f"Failed:{len(self.trips) - success:,}")
+            def jobs(all_ids, threads):
+                return [all_ids[i : i + threads] for i in range(0, len(all_ids), threads)]
+
+            all_ids = self.__traces.trace_id.unique()
+            all_jobs = jobs(all_ids, ceil(len(all_ids) / paralell_threads))
+
+            self.__traces = self.__traces.assign(chunk_id__=0)
+            for i, trace_set in enumerate(all_jobs):
+                self.__traces.loc[self.__traces.trace_id.isin(trace_set), "chunk_id__"] = i
+
+            all_trips = []
+
+            def accumulator(trip_list):
+                all_trips.extend(trip_list)
+
+            logging.getLogger("mapmatcher").info("Starting parallel processing")
+            with mp.Pool(int(min(paralell_threads, len(all_jobs)))) as pool:
+                for i, job_gdf in self.__traces.groupby("chunk_id__"):
+                    pool.apply_async(
+                        run_trips,
+                        args=(
+                            job_gdf,
+                            self.parameters,
+                            self.network,
+                            ignore_errors,
+                        ),
+                        callback=accumulator,
+                    )
+                    print(f"dispatched job {i}")
+                pool.close()
+                pool.join()
+
+            success = sum([trip.success for trip in all_trips])
+            self.trips = all_trips
+
+        logging.getLogger("mapmatcher").critical(f"Succeeded:{success:,}")
+        logging.getLogger("mapmatcher").critical(f"Failed:{len(self.trips) - success:,}")
 
     def set_logging_folder(self, folder):
         self.__log_folder = Path(folder)
