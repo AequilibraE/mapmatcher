@@ -33,6 +33,9 @@ nauru_gps.rename(columns={"x": "longitude", "y": "latitude", "vehicle_unique_id"
 # We also need to provide the transportation mode we want to consider for the
 # map-matching
 project = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
+
+# We need to have at least one centroid connector to the model due to a bug in AequilibraE 0.9.5
+project.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
 mmatcher = MapMatcher.from_aequilibrae(project, "c")
 
 # %%

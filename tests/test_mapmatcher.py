@@ -4,7 +4,6 @@ from pathlib import Path
 from tempfile import gettempdir
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import pytest
 from aequilibrae.utils.create_example import create_example
@@ -26,9 +25,10 @@ def gps_traces() -> gpd.GeoDataFrame:
 @pytest.fixture
 def network() -> Network:
     proj = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
+    proj.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
     proj.network.build_graphs(modes=["c"])
     graph = proj.network.graphs["c"]
-    graph.prepare_graph(np.array([1]))
+
     graph.set_graph("distance")
     link_sql = """SELECT link_id, a_node, b_node, Hex(ST_AsBinary(geometry)) as geometry FROM links where instr(modes, "c")>0;"""
     nodes_sql = "SELECT node_id, Hex(ST_AsBinary(geometry)) as geometry FROM nodes;"
@@ -43,4 +43,5 @@ def test_mapmatcher(gps_traces, network):
     mm = MapMatcher()
     mm.load_network(network.graph, network.links, network.nodes)
     mm.load_gps_traces(gps_traces)
-    mm.map_match(True)
+    mm.map_match(True, paralell_threads=1)
+    assert len(mm.trips) == len(gps_traces.trace_id.unique())

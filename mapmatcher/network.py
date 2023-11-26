@@ -1,6 +1,6 @@
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 from aequilibrae import Graph
 
 from mapmatcher.linebearing import bearing_for_lines

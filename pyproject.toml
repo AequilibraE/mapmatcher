@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "aequilibrae", "geopandas>=0.14.1", "wheel", "scipy"]
+requires = ["setuptools>=61.0", "aequilibrae>=0.9.5", "geopandas>=0.14.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-testing = ['ruff', 'black', 'isort', 'pytest']
+testing = ['ruff', 'black', 'pytest']
 build = ["setuptools", "wheel", "build", "tqdm"]
 auxiliary = ['folium', 'notebook']
 docs = ["pyaml",

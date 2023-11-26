@@ -1,6 +1,3 @@
-from math import ceil, floor
-
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 

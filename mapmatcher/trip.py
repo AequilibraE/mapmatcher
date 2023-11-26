@@ -1,4 +1,5 @@
 import logging
+import traceback
 from math import sqrt
 from time import perf_counter
 from typing import Optional
@@ -7,7 +8,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from aequilibrae.paths.results import PathResults
-from scipy import stats
 from shapely.geometry import LineString
 from shapely.ops import linemerge
 
@@ -78,14 +78,17 @@ class Trip:
         """
         if self.has_error:
             if not ignore_errors:
-                logging.getLogger("mapmatcher").warning(
-                    f"Cannot map-match trace id {self.id} due to : {self._err}. You can also try to ignore errors"
-                )
                 return
 
         # TODO: reset_graph takes a LOT of time because of the rebuilding of the graph. We need to hack the change of
         #       the cost field to avoid this insanity
+        try:
+            self.__map_match()
+        except Exception as e:
+            self._err = f"Critical failures. {traceback.print_exc()}"
+            logging.debug(e.args)
 
+    def __map_match(self):
         self.mm_time = -perf_counter()
         self.network.reset_graph()
         self.network.discount_graph(self.candidate_links)
@@ -102,7 +105,7 @@ class Trip:
             for start, end in zip(wpnts[:-1], wpnts[1:]):
                 if start == end:
                     continue
-                res.compute_path(start, end)
+                res.compute_path(start, end, early_exit=True)
                 if res.path is None:
                     continue
                 links.extend(list(res.path))
@@ -118,6 +121,8 @@ class Trip:
             self.middle_waypoints_required = waypoint_count
         self.mm_time += perf_counter()
         self.__map_matched = 1
+        _ = self.match_quality
+        _ = self.excluded_pings
 
     @property
     def success(self):
@@ -295,7 +300,7 @@ class Trip:
             candidates = candidates[~candidates.stop_node.isin(stop_nodes)]
             if candidates.shape[0] == 0:
                 continue
-            stop_node = stats.mode(candidates.stop_node.to_numpy())[0]
+            stop_node = np.argmax(np.bincount(candidates.stop_node.to_numpy()))
             ping_id = candidates[candidates.stop_node == stop_node].ping_id.values[0]
 
             # ping_id = frm + floor((end - frm) / 2)
