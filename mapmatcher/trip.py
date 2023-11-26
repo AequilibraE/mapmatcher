@@ -272,7 +272,7 @@ class Trip:
 
         wpnts.loc[abs(wpnts.tangent_bearing - wpnts.net_link_az) > 90, "stop_node"] = wpnts.b_node[
             abs(wpnts.tangent_bearing - wpnts.net_link_az) > 90
-            ]
+        ]
         wpnts.iloc[[0, -1], wpnts.columns.get_loc("is_waypoint")] = 1
 
         # For the last ping we actually want the TO node

@@ -179,7 +179,7 @@ class MapMatcher:
                         ),
                         callback=accumulator,
                     )
-                    print(f"dispatched job {i}")
+                    logging.getLogger("mapmatcher").info(f"dispatched job {i}")
                 pool.close()
                 pool.join()
 
