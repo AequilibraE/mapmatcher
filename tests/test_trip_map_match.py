@@ -34,6 +34,7 @@ def gps_trace(param) -> gpd.GeoDataFrame:
 @pytest.fixture
 def network(param) -> Network:
     proj = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
+    proj.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
     proj.network.build_graphs(modes=["c"])
     graph = proj.network.graphs["c"]
     graph.prepare_graph(np.array([1]))
