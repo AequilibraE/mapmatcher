@@ -1,5 +1,4 @@
 # Based on https://gist.github.com/jeromer/2005586
-import math
 import geopandas as gpd
 import numpy as np
 

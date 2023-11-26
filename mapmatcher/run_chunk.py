@@ -1,9 +1,10 @@
-import geopandas as gpd
 from typing import List
 
-from .trip import Trip
-from .parameters import Parameters
+import geopandas as gpd
+
 from .network import Network
+from .parameters import Parameters
+from .trip import Trip
 
 
 def run_trips(trace_set: gpd.GeoDataFrame, parameters: Parameters, network: Network, ignore_errors: bool) -> List[Trip]:

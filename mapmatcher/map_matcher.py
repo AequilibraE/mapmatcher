@@ -168,7 +168,7 @@ class MapMatcher:
 
             logging.getLogger("mapmatcher").info("Starting parallel processing")
             with mp.Pool(int(min(paralell_threads, len(all_jobs)))) as pool:
-                for i, job_gdf in self.__traces.groupby("chunk_id__"):
+                for _, job_gdf in self.__traces.groupby("chunk_id__"):
                     pool.apply_async(
                         run_trips,
                         args=(

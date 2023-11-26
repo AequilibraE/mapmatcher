@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-testing = ['ruff', 'black', 'isort', 'pytest']
+testing = ['ruff', 'black', 'pytest']
 build = ["setuptools", "wheel", "build", "tqdm"]
 auxiliary = ['folium', 'notebook']
 docs = ["pyaml",

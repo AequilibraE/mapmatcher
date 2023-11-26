@@ -4,7 +4,6 @@ from pathlib import Path
 from tempfile import gettempdir
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import pytest
 from aequilibrae.utils.create_example import create_example
