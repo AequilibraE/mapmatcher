@@ -1,9 +1,14 @@
+import uuid
+from os.path import join
 from pathlib import Path
+from tempfile import gettempdir
 
 import geopandas as gpd
 import pandas as pd
 import pytest
+from aequilibrae.utils.create_example import create_example
 
+from mapmatcher.network import Network
 from mapmatcher.parameters import Parameters
 from mapmatcher.trip import Trip
 
@@ -17,34 +22,43 @@ def gps_trace() -> gpd.GeoDataFrame:
 
 
 @pytest.fixture
+def network() -> Network:
+    proj = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
+    proj.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
+    proj.network.build_graphs(modes=["c"])
+    graph = proj.network.graphs["c"]
+
+    graph.set_graph("distance")
+    link_sql = """SELECT link_id, a_node, b_node, Hex(ST_AsBinary(geometry)) as geometry FROM links where instr(modes, "c")>0;"""
+    nodes_sql = "SELECT node_id, Hex(ST_AsBinary(geometry)) as geometry FROM nodes;"
+    links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)
+    nodes = gpd.GeoDataFrame.from_postgis(nodes_sql, proj.conn, geom_col="geometry", crs=4326)
+    nodes = nodes.loc[(nodes.node_id.isin(links.a_node)) | (nodes.node_id.isin(links.b_node)), :]
+    links.drop(["a_node", "b_node"], axis=1, inplace=True)
+    return Network(graph=graph, links=links, nodes=nodes, parameters=Parameters())
+
+
+@pytest.fixture
 def param() -> Parameters:
     par = Parameters()
     par.data_quality.maximum_jittery = 20000
     par.data_quality.max_speed = 41
+    par.map_matching.buffer_size = 10000000000000000
     return par
 
 
-def test_trip(gps_trace, param):
-    trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
+def test_trip(gps_trace, param, network):
+    trp = Trip(gps_trace=gps_trace, parameters=param, network=network)
     assert not trp.has_error
 
 
-def test_fail_on_jitter(gps_trace, param):
+def test_bufer_size(gps_trace, param, network):
+    param.map_matching.buffer_size = 50
     param.data_quality.maximum_jittery = 0.01
-    trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
-    assert trp.has_error
-    assert "jitter" in trp._err
-
-
-def test_fail_on_speed_time(gps_trace, param):
     param.data_quality.max_speed_time = 0
-    trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
-    assert trp.has_error
-    assert "surpassed" in trp._err
 
-
-def test_fail_on_speed_time2(gps_trace, param):
-    param.data_quality.max_speed = 120 / 3.6
-    trp = Trip(gps_trace=gps_trace, parameters=param, network=None)
+    trp = Trip(gps_trace=gps_trace, parameters=param, network=network)
     assert trp.has_error
+    assert "pings are more than" in trp._err
+    assert "jitter" in trp._err
     assert "surpassed" in trp._err

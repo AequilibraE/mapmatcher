@@ -242,6 +242,12 @@ class Trip:
         # Adds the GPS pings sequence
         self.trace = self.trace.assign(ping_sequence=np.arange(1, self.trace.shape[0] + 1))
 
+        # Adds information on all the
+        self.__waypoints = self.trace.sjoin_nearest(self.network.links, distance_col="dist_near_link")
+        bf = self.parameters.map_matching.buffer_size
+        if self.__waypoints[self.__waypoints.dist_near_link < bf].shape[0] == 0:
+            self._err += f"  All pings are more than {bf}m from any network link"
+
     def compute_stops(self):
         """Compute stops."""
 
@@ -265,7 +271,7 @@ class Trip:
         self.__candidate_links = filtered.index.to_numpy()
 
         # Now we get the first/last links
-        wpnts = self.trace.sjoin_nearest(self.network.links, distance_col="dist_near_link")
+        wpnts = self.__waypoints
         wpnts = wpnts[["ping_id", "timestamp", "a_node", "b_node", "net_link_az", "tangent_bearing", "dist_near_link"]]
         wpnts = wpnts.assign(is_waypoint=0, stop_node=wpnts.a_node, ping_is_covered=0)
         wpnts = gpd.GeoDataFrame(wpnts, geometry=self.trace.geometry, crs=self.trace.crs)
@@ -314,9 +320,8 @@ class Trip:
         if self.__match_quality < 0:
             buffer = self.parameters.map_matching.buffer_size
             self.__waypoints.loc[:, "ping_is_covered"] = self.__waypoints.intersects(self.path_shape.buffer(buffer))[:]
-            self._debug = self.__waypoints
             self.__match_quality = min(
-                1.0, self.__waypoints.ping_is_covered.sum() / max(self.trace.shape[0] - self.excluded_pings, 1)
+                1.0, self.__waypoints.ping_is_covered.sum() / self.trace.shape[0] - self.excluded_pings
             )
         return self.__match_quality
 
