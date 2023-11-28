@@ -52,7 +52,8 @@ class Network:
             self.links = self.links.join(
                 pd.DataFrame(graph.network[["link_id", "a_node", "b_node"]]).set_index(["link_id"])
             )
-        self.links = self.links.assign(net_link_az=bearing_for_lines(self.links))
+        self.links = self.links.merge(bearing_for_lines(self.links), on="link_id")
+        self.links.set_index("link_id", inplace=True)
 
     @property
     def has_speed(self) -> bool:
