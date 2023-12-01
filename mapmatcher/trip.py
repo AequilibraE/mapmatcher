@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from aequilibrae.paths.results import PathResults
 from shapely.geometry import LineString
-from shapely.ops import linemerge
+from shapely.ops import linemerge, substring
 
 from mapmatcher.linebearing import bearing_for_gps
 from mapmatcher.network import Network
@@ -43,7 +43,7 @@ class Trip:
 
         """
 
-        self.__coverage = -1.1
+        self.__coverage = -1
         self.__candidate_links = np.array([])
         self.__map_matched = 0
         self.id = -1
@@ -79,8 +79,6 @@ class Trip:
             if not ignore_errors:
                 return
 
-        # TODO: reset_graph takes a LOT of time because of the rebuilding of the graph. We need to hack the change of
-        #       the cost field to avoid this insanity
         try:
             self.__map_match()
         except Exception as e:
@@ -90,20 +88,23 @@ class Trip:
     def __map_match(self):
         if not self._waypoints.shape[0]:
             return
+
         self.mm_time = -perf_counter()
         self.network.reset_graph()
-        self.network.discount_graph(self.candidate_links)
+        self.network.discount_graph(self.__candidate_links)
         res = PathResults()
         res.prepare(self.network.graph)
 
         par = self.parameters.map_matching
         pos = 0
+        curr_match_quality = 0
         for waypoint_count in range(par.maximum_waypoints + 1):
-            wpnts = self._waypoints.stop_node[self._waypoints.is_waypoint == 1].to_list()
+            wpnts = self._waypoints.stop_node[self._waypoints.is_waypoint > 0].to_list()
             links = []
             directions = []
             mileposts = []
             for start, end in zip(wpnts[:-1], wpnts[1:]):
+                res.reset()
                 if start == end:
                     continue
                 res.compute_path(start, end, early_exit=True)
@@ -113,13 +114,20 @@ class Trip:
                 directions.extend(list(res.path_link_directions))
                 mileposts.extend(list(res.milepost[1:] + pos))
                 pos = mileposts[-1]
-                res.reset()
             self.__mm_results = pd.DataFrame({"links": links, "direction": directions, "milepost": mileposts})
             if self.match_quality >= par.minimum_match_quality:
+                self.__reset()
                 break
+
+            corr = -1 if curr_match_quality == self.match_quality else 1
+            # It means that the latest waypoint did not improve anything, so we can get rid of it
+            self._waypoints.loc[self._waypoints.is_waypoint == 2, "is_waypoint"] = corr
+            curr_match_quality = self.match_quality
+
             self.__reset()
             self.__add_waypoint()
             self.middle_waypoints_required = waypoint_count
+        self._waypoints.loc[self._waypoints.is_waypoint == 2, "stop_node"] = 1
         self.mm_time += perf_counter()
         self.__map_matched = 1
         _ = self.match_quality
@@ -136,11 +144,23 @@ class Trip:
         """Returns the `shapely.LineString` that represents the map-matched path."""
         if not self.__geo_path.length:
             links = self.network.links.loc[self.__mm_results.links.to_numpy(), :]
+
             geo_data = []
-            for (_, rec), direction in zip(links.iterrows(), self.__mm_results.direction.to_numpy()):
-                geo = rec.geometry if direction > 0 else LineString(rec.geometry.coords[::-1])
-                geo_data.append(geo)
-            self.__geo_path = linemerge(geo_data)
+            idxs = np.arange(self.__mm_results.shape[0])
+            if idxs.shape[0]:
+                idxs[-1] = -1
+            points = self._waypoints[self._waypoints.ping_is_covered.astype(int) == 1].geometry
+            for (_, rec), direction, idx in zip(links.iterrows(), self.__mm_results.direction.to_numpy(), idxs):
+                geo = rec.geometry.coords if direction > 0 else rec.geometry.coords[::-1]
+                if idx == 0 and len(points) > 1:
+                    geo_ = LineString(geo)
+                    geo = substring(geo_, geo_.project(points.values[0]), geo_.length).coords
+                if idx == -1 and len(points) > 1:
+                    geo_ = LineString(geo)
+                    geo = substring(geo_, 0, geo_.project(points.values[-1])).coords
+
+                geo_data.extend(geo)
+            self.__geo_path = LineString(geo_data)
         return self.__geo_path
 
     @property
@@ -167,12 +187,6 @@ class Trip:
         Returns `True` if there are any errors, otherwise, it returns `False`.
         """
         return len(self._err) > 0
-
-    @property
-    def candidate_links(self) -> np.ndarray:
-        """Returns an array containing the candidate links."""
-        self.__network_links()
-        return self.__candidate_links
 
     def __pre_process(self):
         dqp = self.parameters.data_quality
@@ -248,6 +262,10 @@ class Trip:
         self._waypoints = self._waypoints[self._waypoints.dist_near_link <= bf]
         if self._waypoints.shape[0] == 0:
             self._err += f"  All pings are more than {bf}m from any network link"
+        else:
+            self.__network_links()
+            if len(self._waypoints.stop_node.unique()) < 2:
+                self._err += "  All valid GPS ping map to a single point in the network"
 
     def compute_stops(self):
         """Compute stops."""
@@ -303,7 +321,7 @@ class Trip:
             # ping_id = frm + floor((end - frm) / 2)
             if self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"].values[0] == 0:
                 break
-        self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"] = 1
+        self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"] = 2
 
     @property
     def match_quality(self):
@@ -313,6 +331,10 @@ class Trip:
             self._waypoints.loc[:, "ping_is_covered"] = self._waypoints.intersects(self.path_shape.buffer(buffer))[:]
             self.__match_quality = min(1.0, self._waypoints.ping_is_covered.sum() / self._waypoints.shape[0])
         return self.__match_quality
+
+    @property
+    def distance_ratio(self):
+        return self.path_shape.length / self.trace.trace_segment_dist.sum()
 
     @property
     def match_quality_raw(self):

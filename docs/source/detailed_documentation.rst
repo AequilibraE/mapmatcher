@@ -12,6 +12,10 @@ to reproduce the trace's route by computing routes between the initial and final
 GPS trace was recorded and progressively adding waypoints on segments/nodes on the links associated
 with sequences of GPS pings that are not covered with the path found for the prevailing set of waypoints.
 
+One of the important features of the algorithm is that waypoints that do not improve on the match-quality
+are immediately excluded, which helps avoiding spurious detours and accelerates the algorithm by
+reducing the number of path-finding operations executed.
+
 
 Algorithm parameters
 ++++++++++++++++++++
@@ -25,10 +29,11 @@ for a particular application, and their default values and purses are presented 
     >>>
     >>> par = Parameters()
     >>> par.map_matching.cost_discount: float = 0.1  # link cost reduction ratio for links likely to be used
-    >>> par.map_matching.buffer_size: float = 50  # Buffer around the links to capture links likely used. Unit is meters
+    >>> par.map_matching.buffer_size: float = 20  # Buffer around the links to capture links likely used. Unit is meters
     >>> par.map_matching.minimum_match_quality: float = 0.99 # *match_quality* expected to be matched
-    >>> par.map_matching.maximum_waypoints: int = 20 # Number of middle waypoints added in the algorithm
+    >>> par.map_matching.maximum_waypoints: int = 20 # Number of middle waypoints attempted by the algorithm
     >>> par.map_matching.heading_tolerance: float = 22.5  # tolerance to be used when comparing a link's direction with the link it seems to be associated with
+
 
 Further to these parameters, the user
 
@@ -43,6 +48,8 @@ process, and they are listed below:
 * match_quality: Similar to the *match_quality_raw* above, but only considers GPS pings that have at least one network link closer than the buffer distance
 
 * middle_points_required: The number of waypoints required to reproduce the final path
+
+* distance_ratio: The distance of the final path shape created after the map-matching and the straight line distance connecting all points in the trace
 
 Stop Finding
 ------------
