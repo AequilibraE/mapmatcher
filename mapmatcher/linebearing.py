@@ -38,5 +38,5 @@ def vectorized_line_bearing(lat1, long1, lat2, long2):
     x = np.sin(delta_long) * np.cos(latB)
     y = np.cos(latA) * np.sin(latB) - (np.sin(latA) * np.cos(latB) * np.cos(delta_long))
     bearing_radians = np.arctan2(x, y)
-    bearing_degrees = np.degrees(bearing_radians)
+    bearing_degrees = np.degrees(bearing_radians) + 180
     return (bearing_degrees + 360) % 360

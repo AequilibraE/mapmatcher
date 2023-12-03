@@ -55,7 +55,7 @@ class Trip:
         self.__geo_path = LineString([])
         self.__mm_results = pd.DataFrame([], columns=["links", "direction", "milepost"])
         self.network = network
-        self._err = "Data not loaded yet"
+        self._err = ["Data not loaded yet"]
         self.middle_waypoints_required = 0
         self.mm_time = 0
         self.__match_quality = -1
@@ -82,8 +82,9 @@ class Trip:
         try:
             self.__map_match()
         except Exception as e:
-            self._err = f"Critical failures. {traceback.print_exc()}"
-            logging.debug(e.args)
+            self._err = [f"Critical failures. {traceback.print_exc()}"]
+            logging.getLogger("mapmatcher").critical(e.args)
+            print(e)
 
     def __map_match(self):
         if not self._waypoints.shape[0]:
@@ -143,23 +144,28 @@ class Trip:
     def path_shape(self) -> LineString:
         """Returns the `shapely.LineString` that represents the map-matched path."""
         if not self.__geo_path.length:
-            links = self.network.links.loc[self.__mm_results.links.to_numpy(), :]
+            links = self.network.links.loc[self.__mm_results.links.to_numpy(), :].reset_index()
 
             geo_data = []
-            idxs = np.arange(self.__mm_results.shape[0])
-            if idxs.shape[0]:
-                idxs[-1] = -1
             points = self._waypoints[self._waypoints.ping_is_covered.astype(int) == 1].geometry
-            for (_, rec), direction, idx in zip(links.iterrows(), self.__mm_results.direction.to_numpy(), idxs):
+            for (i_d, rec), direction in zip(links.iterrows(), self.__mm_results.direction.to_numpy()):
                 geo = rec.geometry.coords if direction > 0 else rec.geometry.coords[::-1]
-                if idx == 0 and len(points) > 1:
-                    geo_ = LineString(geo)
-                    geo = substring(geo_, geo_.project(points.values[0]), geo_.length).coords
-                if idx == -1 and len(points) > 1:
-                    geo_ = LineString(geo)
-                    geo = substring(geo_, 0, geo_.project(points.values[-1])).coords
-
-                geo_data.extend(geo)
+                found_line = True
+                if points.shape[0]:
+                    if i_d == 0:
+                        geo_ = LineString(geo)
+                        geo_ = substring(geo_, geo_.project(points.values[0]), geo_.length)
+                        if geo_.length == 0:
+                            found_line = False
+                        geo = geo_.coords
+                    if i_d == links.shape[0] - 1 and found_line:
+                        geo_ = LineString(geo)
+                        geo_ = substring(geo_, 0, geo_.project(points.values[-1]))
+                        geo = geo_.coords
+                        if geo_.length == 0:
+                            found_line = False
+                if found_line:
+                    geo_data.extend(list(geo))
             self.__geo_path = LineString(geo_data)
         return self.__geo_path
 
@@ -190,7 +196,7 @@ class Trip:
 
     def __pre_process(self):
         dqp = self.parameters.data_quality
-        self._err = ""
+        self._err = []
 
         if "trace_id" not in self.trace:
             raise ValueError("Trace does not have field trace_id")
@@ -207,10 +213,10 @@ class Trip:
         self.trace.reset_index(drop=True, inplace=True)
         # Check number of pings
         if self.trace.shape[0] < dqp.minimum_pings:
-            self._err = f"Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}"
+            self._err.append(f"Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}")
 
         if self.coverage < dqp.minimum_coverage:
-            self._err += f"  Vehicle covers only {self.coverage:,.2} m. Minimum is {dqp.minimum_coverage}"
+            self._err.append(f"Vehicle covers only {self.coverage:,.2} m. Minimum is {dqp.minimum_coverage}")
 
         # removes pings on the same spot
         self.trace["ping_posix_time"] = (self.trace.timestamp - pd.Timestamp("1970-01-01")) // pd.Timedelta("1s")
@@ -225,12 +231,12 @@ class Trip:
             agg = df.groupby(["ping_posix_time"]).agg(["min", "max", "count"])
             jitter = np.sqrt((agg.x["min"] - agg.x["max"]) ** 2 + (agg.y["min"] - agg.y["max"]) ** 2)
             if np.max(jitter) > dqp.maximum_jittery:
-                self._err += f"  Data is jittery. Same timestamp {np.max(jitter):,.2} m apart."
+                self._err.append(f"Data is jittery. Same timestamp {np.max(jitter):,.2} m apart.")
 
             self.trace.drop_duplicates(subset=["ping_posix_time"], inplace=True, keep="first")
 
             if self.trace.shape[0] < dqp.minimum_pings:
-                self._err += f"   Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}"
+                self._err.append(f"Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}")
         # Create data quality fields
         dist = self.trace.distance(self.trace.shift(1))
         ttime = (self.trace["timestamp"] - self.trace["timestamp"].shift(1)).dt.seconds.astype(float)
@@ -251,7 +257,7 @@ class Trip:
                 "trace_segment_traveled_time"
             ].cumsum()
             if too_fast.max() > dqp.max_speed_time:
-                self._err += f"  Max speed surpassed for {w} seconds"
+                self._err.append(f"Max speed surpassed for {w} seconds")
 
         # Adds the GPS pings sequence
         self.trace = self.trace.assign(ping_sequence=np.arange(1, self.trace.shape[0] + 1))
@@ -260,12 +266,14 @@ class Trip:
         self._waypoints = self.trace.sjoin_nearest(self.network.links.reset_index(), distance_col="dist_near_link")
         bf = self.parameters.map_matching.buffer_size
         self._waypoints = self._waypoints[self._waypoints.dist_near_link <= bf]
-        if self._waypoints.shape[0] == 0:
-            self._err += f"  All pings are more than {bf}m from any network link"
+        if self._waypoints.shape[0] < dqp.minimum_pings:
+            pings = self.trace.shape[0]
+            minp = self._waypoints.shape[0]
+            self._err.append(f"Vehicle has {pings} pings, but only {minp} within {bf}m from any network link")
         else:
             self.__network_links()
             if len(self._waypoints.stop_node.unique()) < 2:
-                self._err += "  All valid GPS ping map to a single point in the network"
+                self._err.append(f"All valid GPS ping map to a single point in the network")
 
     def compute_stops(self):
         """Compute stops."""
@@ -289,11 +297,25 @@ class Trip:
         wpnts.loc[(-abs_diff + 360).abs() < 90, "stop_node"] = wpnts.a_node[(-abs_diff + 360).abs() < 90]
         wpnts.iloc[[0, -1], wpnts.columns.get_loc("is_waypoint")] = 1
 
-        # For the last ping we actually want the TO node
-        if wpnts.stop_node.iloc[0] == wpnts.b_node.iloc[0]:
-            wpnts.iloc[0, wpnts.columns.get_loc("stop_node")] = wpnts.a_node.iloc[0]
+        col_loc = wpnts.columns.get_loc("stop_node")
+        if wpnts.link_id.unique().shape[0] > 1:
+            # For the last ping we actually want the TO node
+            if wpnts.stop_node.iloc[0] == wpnts.b_node.iloc[0]:
+                wpnts.iloc[0, col_loc] = wpnts.a_node.iloc[0]
+            else:
+                wpnts.iloc[0, col_loc] = wpnts.b_node.iloc[0]
         else:
-            wpnts.iloc[0, wpnts.columns.get_loc("stop_node")] = wpnts.b_node.iloc[0]
+            a_node = wpnts.a_node.values[0]
+            b_node = wpnts.b_node.values[0]
+            a_geo = wpnts.geometry.values[0]
+            b_geo = wpnts.geometry.values[-1]
+            link_geo = self.network.links.loc[wpnts.link_id.values[0]].geometry
+            if link_geo.project(a_geo) < link_geo.project(b_geo):
+                wpnts.iloc[0, col_loc] = a_node
+                wpnts.iloc[-1, col_loc] = b_node
+            else:
+                wpnts.iloc[0, col_loc] = b_node
+                wpnts.iloc[-1, col_loc] = a_node
 
         self._waypoints = wpnts
         self.__candidate_links = list(wpnts.link_id.unique())
