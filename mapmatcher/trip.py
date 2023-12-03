@@ -273,7 +273,7 @@ class Trip:
         else:
             self.__network_links()
             if len(self._waypoints.stop_node.unique()) < 2:
-                self._err.append(f"All valid GPS ping map to a single point in the network")
+                self._err.append("All valid GPS ping map to a single point in the network")
 
     def compute_stops(self):
         """Compute stops."""
