@@ -106,12 +106,6 @@ When using a Geopandas GeoDataFrame
 1. trace_id (*int*)
 2. timestamp (*date-time format*): timestamp for the data file
 
-
-The following fields can also be used, but are optional:
-
-1. heading (*float*): Direction (degrees [0,359]) the vehicle was heading when ping was registered
-2. speed (*float*): Speed the vehicle was traveling at when ping happened
-
 Data Quality
 ------------
 
