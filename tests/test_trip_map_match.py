@@ -40,13 +40,9 @@ def network(param) -> Network:
     graph.prepare_graph(np.array([1]))
     graph.set_graph("distance")
     link_sql = "SELECT link_id, Hex(ST_AsBinary(geometry)) as geometry FROM links;"
-    nodes_sql = "SELECT node_id, Hex(ST_AsBinary(geometry)) as geometry FROM nodes;"
     links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)
-    nodes = gpd.GeoDataFrame.from_postgis(nodes_sql, proj.conn, geom_col="geometry", crs=4326)
-    nodes = nodes.set_index(["node_id"])
-    nodes = gpd.GeoDataFrame(nodes, geometry=nodes.geometry, crs=4326)
 
-    return Network(graph=graph, links=links, nodes=nodes, parameters=param)
+    return Network(graph=graph, links=links, parameters=param)
 
 
 def test_map_match(gps_trace, network):

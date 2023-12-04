@@ -56,12 +56,10 @@ class MapMatcher:
         graph.prepare_graph(np.array([1]))
         graph.set_graph("distance")
         link_sql = "SELECT link_id, Hex(ST_AsBinary(geometry)) as geometry FROM links;"
-        nodes_sql = "SELECT node_id, Hex(ST_AsBinary(geometry)) as geometry FROM nodes;"
         links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)
-        nodes = gpd.GeoDataFrame.from_postgis(nodes_sql, proj.conn, geom_col="geometry", crs=4326)
 
         mmatcher = MapMatcher()
-        mmatcher.load_network(graph=graph, links=links, nodes=nodes)
+        mmatcher.load_network(graph=graph, links=links)
         return mmatcher
 
     def set_output_folder(self, output_folder: str):
@@ -73,7 +71,7 @@ class MapMatcher:
         """
         self.output_folder = output_folder
 
-    def load_network(self, graph: Graph, links: gpd.GeoDataFrame, nodes: Optional[gpd.GeoDataFrame] = None):
+    def load_network(self, graph: Graph, links: gpd.GeoDataFrame):
         """Loads the project network.
 
         :Arguments:
@@ -81,10 +79,8 @@ class MapMatcher:
             **graph** (:obj:`aequilibrae.graph.Graph`): AequilibraE graph
 
             **links** (:obj:`gpd.GeoDataFrame`): GeoDataFrame with the network links
-
-            **nodes** (:obj:`gpd.GeoDataFrame`, optional): GeoDataFrame with the network nodes
         """
-        self.network = Network(graph=graph, links=links, nodes=nodes, parameters=self.parameters)
+        self.network = Network(graph=graph, links=links, parameters=self.parameters)
 
     def load_gps_traces(self, gps_traces: Union[gpd.GeoDataFrame, PathLike], crs: Optional[int] = None):
         """

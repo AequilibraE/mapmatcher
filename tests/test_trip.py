@@ -30,12 +30,9 @@ def network() -> Network:
 
     graph.set_graph("distance")
     link_sql = """SELECT link_id, a_node, b_node, Hex(ST_AsBinary(geometry)) as geometry FROM links where instr(modes, "c")>0;"""
-    nodes_sql = "SELECT node_id, Hex(ST_AsBinary(geometry)) as geometry FROM nodes;"
     links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)
-    nodes = gpd.GeoDataFrame.from_postgis(nodes_sql, proj.conn, geom_col="geometry", crs=4326)
-    nodes = nodes.loc[(nodes.node_id.isin(links.a_node)) | (nodes.node_id.isin(links.b_node)), :]
     links.drop(["a_node", "b_node"], axis=1, inplace=True)
-    return Network(graph=graph, links=links, nodes=nodes, parameters=Parameters())
+    return Network(graph=graph, links=links, parameters=Parameters())
 
 
 @pytest.fixture
@@ -58,7 +55,9 @@ def test_bufer_size(gps_trace, param, network):
     param.data_quality.max_speed_time = 0
 
     trp = Trip(gps_trace=gps_trace, parameters=param, network=network)
+
+    error = ",".join(trp._err)
     assert trp.has_error
-    assert "pings are more than" in trp._err
-    assert "jitter" in trp._err
-    assert "surpassed" in trp._err
+    assert "from any network lin" in error
+    assert "jitter" in error
+    assert "surpassed" in error

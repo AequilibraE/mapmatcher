@@ -81,7 +81,6 @@ Three pieces of network data are required by **MapMatcher**
 1. A Set of GPS traces in either CSV or GeoDataFrame formats
 2. An AequilibraE Graph
 3. A GeoPandas GeoDataFrame with all **links** in the graph
-4. A GeoPandas GeoDataFrame with all **nodes** in the graph
 
 
 GPS data requirements
@@ -173,7 +172,7 @@ by just setting **ignore_errors = True** in the map-match method call, as shown 
     >>> from mapmatcher import MapMatcher
 
     >>> matcher = Mapmatcher()
-    >>> matcher.load_network(graph, links, nodes)
+    >>> matcher.load_network(graph, links)
     >>> matcher.load_gps_traces(gps_traces)
     >>> matcher.map_match(ignore_errors=True)
 
