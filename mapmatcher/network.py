@@ -15,18 +15,16 @@ class Network:
 
         >>> from mapmatcher.network import Network
 
-        >>> network = Network(graph, links, nodes, parameters)
+        >>> network = Network(graph, links, parameters)
 
     """
 
-    def __init__(self, graph: Graph, links: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame, parameters: Parameters):
+    def __init__(self, graph: Graph, links: gpd.GeoDataFrame, parameters: Parameters):
         """
         :Arguments:
             **graph** (:obj:`aequilibrae.graph.Graph`): AequilibraE graph
 
             **links** (:obj:`gpd.GeoDataFrame`): GeoDataFrame containing the network links
-
-            **nodes** (:obj:`gpd.GeoDataFrame`): GeoDataFrame containing the network nodes
 
             **parameters** (:obj:`Parameters`): Map-Matching parameters.
 
@@ -41,18 +39,14 @@ class Network:
         if links._geometry_column_name != "geometry":
             links.rename_geometry("geometry", inplace=True)
 
-        nodes = nodes.to_crs(parameters.geoprocessing.projected_crs)
-        if nodes._geometry_column_name != "geometry":
-            nodes.rename_geometry("geometry", inplace=True)
-
         self.links = links if links.index.name == "link_id" else links.set_index("link_id", drop=True)
-        self.nodes = nodes if nodes.index.name == "node_id" else nodes.set_index("node_id", drop=True)
 
         if "a_node" not in self.links:
             self.links = self.links.join(
                 pd.DataFrame(graph.network[["link_id", "a_node", "b_node"]]).set_index(["link_id"])
             )
-        self.links = self.links.assign(net_link_az=bearing_for_lines(self.links))
+        self.links = self.links.merge(bearing_for_lines(self.links), on="link_id")
+        self.links.set_index("link_id", inplace=True)
 
     @property
     def has_speed(self) -> bool:

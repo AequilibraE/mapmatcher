@@ -15,4 +15,4 @@ def test_line_bearing():
     )
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude), crs="EPSG:4326")
     a = bearing_for_gps(gdf)
-    np.testing.assert_array_equal(np.array([90, 270, 180, 180]), a)
+    np.testing.assert_array_equal(np.array([270, 90, 0, 0]), a)

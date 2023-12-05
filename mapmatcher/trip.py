@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from aequilibrae.paths.results import PathResults
 from shapely.geometry import LineString
-from shapely.ops import linemerge
+from shapely.ops import linemerge, substring
 
 from mapmatcher.linebearing import bearing_for_gps
 from mapmatcher.network import Network
@@ -43,23 +43,22 @@ class Trip:
 
         """
 
-        self.__coverage = -1.1
+        self.__coverage = -1
         self.__candidate_links = np.array([])
         self.__map_matched = 0
         self.id = -1
 
         self.parameters = parameters
         self.stops: Optional[gpd.GeoDataFrame] = None
-        self.__waypoints: Optional[gpd.GeoDataFrame] = None
+        self._waypoints: Optional[gpd.GeoDataFrame] = None
         self.warnings = []
         self.__geo_path = LineString([])
         self.__mm_results = pd.DataFrame([], columns=["links", "direction", "milepost"])
         self.network = network
-        self._err = "Data not loaded yet"
+        self._err = ["Data not loaded yet"]
         self.middle_waypoints_required = 0
         self.mm_time = 0
         self.__match_quality = -1
-        self.__excluded_pings = -1
 
         # Creates the properties for the outputs
         self.trace = gps_trace.to_crs(parameters.geoprocessing.projected_crs)
@@ -80,29 +79,33 @@ class Trip:
             if not ignore_errors:
                 return
 
-        # TODO: reset_graph takes a LOT of time because of the rebuilding of the graph. We need to hack the change of
-        #       the cost field to avoid this insanity
         try:
             self.__map_match()
         except Exception as e:
-            self._err = f"Critical failures. {traceback.print_exc()}"
-            logging.debug(e.args)
+            self._err = [f"Critical failures. {traceback.print_exc()}"]
+            logging.getLogger("mapmatcher").critical(e.args)
+            print(e)
 
     def __map_match(self):
+        if not self._waypoints.shape[0]:
+            return
+
         self.mm_time = -perf_counter()
         self.network.reset_graph()
-        self.network.discount_graph(self.candidate_links)
+        self.network.discount_graph(self.__candidate_links)
         res = PathResults()
         res.prepare(self.network.graph)
 
         par = self.parameters.map_matching
         pos = 0
+        curr_match_quality = 0
         for waypoint_count in range(par.maximum_waypoints + 1):
-            wpnts = self.__waypoints.stop_node[self.__waypoints.is_waypoint == 1].to_list()
+            wpnts = self._waypoints.stop_node[self._waypoints.is_waypoint > 0].to_list()
             links = []
             directions = []
             mileposts = []
             for start, end in zip(wpnts[:-1], wpnts[1:]):
+                res.reset()
                 if start == end:
                     continue
                 res.compute_path(start, end, early_exit=True)
@@ -112,17 +115,23 @@ class Trip:
                 directions.extend(list(res.path_link_directions))
                 mileposts.extend(list(res.milepost[1:] + pos))
                 pos = mileposts[-1]
-                res.reset()
             self.__mm_results = pd.DataFrame({"links": links, "direction": directions, "milepost": mileposts})
             if self.match_quality >= par.minimum_match_quality:
+                self.__reset()
                 break
+
+            corr = -1 if curr_match_quality == self.match_quality else 1
+            # It means that the latest waypoint did not improve anything, so we can get rid of it
+            self._waypoints.loc[self._waypoints.is_waypoint == 2, "is_waypoint"] = corr
+            curr_match_quality = self.match_quality
+
             self.__reset()
             self.__add_waypoint()
             self.middle_waypoints_required = waypoint_count
+        self._waypoints.loc[self._waypoints.is_waypoint == 2, "stop_node"] = 1
         self.mm_time += perf_counter()
         self.__map_matched = 1
         _ = self.match_quality
-        _ = self.excluded_pings
 
     @property
     def success(self):
@@ -135,12 +144,29 @@ class Trip:
     def path_shape(self) -> LineString:
         """Returns the `shapely.LineString` that represents the map-matched path."""
         if not self.__geo_path.length:
-            links = self.network.links.loc[self.__mm_results.links.to_numpy(), :]
+            links = self.network.links.loc[self.__mm_results.links.to_numpy(), :].reset_index()
+
             geo_data = []
-            for (_, rec), direction in zip(links.iterrows(), self.__mm_results.direction.to_numpy()):
-                geo = rec.geometry if direction > 0 else LineString(rec.geometry.coords[::-1])
-                geo_data.append(geo)
-            self.__geo_path = linemerge(geo_data)
+            points = self._waypoints[self._waypoints.ping_is_covered.astype(int) == 1].geometry
+            for (i_d, rec), direction in zip(links.iterrows(), self.__mm_results.direction.to_numpy()):
+                geo = rec.geometry.coords if direction > 0 else rec.geometry.coords[::-1]
+                found_line = True
+                if points.shape[0]:
+                    if i_d == 0:
+                        geo_ = LineString(geo)
+                        geo_ = substring(geo_, geo_.project(points.values[0]), geo_.length)
+                        if geo_.length == 0:
+                            found_line = False
+                        geo = geo_.coords
+                    if i_d == links.shape[0] - 1 and found_line:
+                        geo_ = LineString(geo)
+                        geo_ = substring(geo_, 0, geo_.project(points.values[-1]))
+                        geo = geo_.coords
+                        if geo_.length == 0:
+                            found_line = False
+                if found_line:
+                    geo_data.extend(list(geo))
+            self.__geo_path = LineString(geo_data)
         return self.__geo_path
 
     @property
@@ -168,15 +194,9 @@ class Trip:
         """
         return len(self._err) > 0
 
-    @property
-    def candidate_links(self) -> np.ndarray:
-        """Returns an array containing the candidate links."""
-        self.__network_links()
-        return self.__candidate_links
-
     def __pre_process(self):
         dqp = self.parameters.data_quality
-        self._err = ""
+        self._err = []
 
         if "trace_id" not in self.trace:
             raise ValueError("Trace does not have field trace_id")
@@ -193,10 +213,10 @@ class Trip:
         self.trace.reset_index(drop=True, inplace=True)
         # Check number of pings
         if self.trace.shape[0] < dqp.minimum_pings:
-            self._err = f"Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}"
+            self._err.append(f"Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}")
 
         if self.coverage < dqp.minimum_coverage:
-            self._err += f"  Vehicle covers only {self.coverage:,.2} m. Minimum is {dqp.minimum_coverage}"
+            self._err.append(f"Vehicle covers only {self.coverage:,.2} m. Minimum is {dqp.minimum_coverage}")
 
         # removes pings on the same spot
         self.trace["ping_posix_time"] = (self.trace.timestamp - pd.Timestamp("1970-01-01")) // pd.Timedelta("1s")
@@ -211,12 +231,12 @@ class Trip:
             agg = df.groupby(["ping_posix_time"]).agg(["min", "max", "count"])
             jitter = np.sqrt((agg.x["min"] - agg.x["max"]) ** 2 + (agg.y["min"] - agg.y["max"]) ** 2)
             if np.max(jitter) > dqp.maximum_jittery:
-                self._err += f"  Data is jittery. Same timestamp {np.max(jitter):,.2} m apart."
+                self._err.append(f"Data is jittery. Same timestamp {np.max(jitter):,.2} m apart.")
 
             self.trace.drop_duplicates(subset=["ping_posix_time"], inplace=True, keep="first")
 
             if self.trace.shape[0] < dqp.minimum_pings:
-                self._err += f"   Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}"
+                self._err.append(f"Vehicle with only {self.trace.shape[0]} pings. Minimum is {dqp.minimum_pings}")
         # Create data quality fields
         dist = self.trace.distance(self.trace.shift(1))
         ttime = (self.trace["timestamp"] - self.trace["timestamp"].shift(1)).dt.seconds.astype(float)
@@ -237,10 +257,23 @@ class Trip:
                 "trace_segment_traveled_time"
             ].cumsum()
             if too_fast.max() > dqp.max_speed_time:
-                self._err += f"  Max speed surpassed for {w} seconds"
+                self._err.append(f"Max speed surpassed for {w} seconds")
 
         # Adds the GPS pings sequence
         self.trace = self.trace.assign(ping_sequence=np.arange(1, self.trace.shape[0] + 1))
+
+        # Adds information on all the
+        self._waypoints = self.trace.sjoin_nearest(self.network.links.reset_index(), distance_col="dist_near_link")
+        bf = self.parameters.map_matching.buffer_size
+        self._waypoints = self._waypoints[self._waypoints.dist_near_link <= bf]
+        if self._waypoints.shape[0] < dqp.minimum_pings:
+            pings = self.trace.shape[0]
+            minp = self._waypoints.shape[0]
+            self._err.append(f"Vehicle has {pings} pings, but only {minp} within {bf}m from any network link")
+        else:
+            self.__network_links()
+            if len(self._waypoints.stop_node.unique()) < 2:
+                self._err.append("All valid GPS ping map to a single point in the network")
 
     def compute_stops(self):
         """Compute stops."""
@@ -250,42 +283,46 @@ class Trip:
     def __network_links(self):
         if self.__candidate_links.shape[0] > 0:
             return
-        pars = self.parameters.map_matching
-        cand = self.network.links.sjoin_nearest(self.trace, distance_col="ping_dist", max_distance=pars.buffer_size)
-
-        # Remove candidates that are above the allowed speed
-        if self.network.has_speed:
-            cand = cand[cand[self.network._speed_field] >= cand.trace_segment_speed]
-
-        cand_acceptable = check_lines_aligned(cand, pars.heading_tolerance)
-        filtered = cand.loc[cand[cand_acceptable.aligned == 1].index, :]
-
-        filtered = filtered.loc[filtered.groupby(["ping_sequence"]).ping_dist.idxmin()]
-
-        self.__candidate_links = filtered.index.to_numpy()
 
         # Now we get the first/last links
-        wpnts = self.trace.sjoin_nearest(self.network.links, distance_col="dist_near_link")
-        wpnts = wpnts[["ping_id", "timestamp", "a_node", "b_node", "net_link_az", "tangent_bearing", "dist_near_link"]]
-        wpnts = wpnts.assign(is_waypoint=0, stop_node=wpnts.a_node, ping_is_covered=0)
+        wpnts = self._waypoints
+        wpnts = wpnts[
+            ["ping_id", "timestamp", "link_id", "a_node", "b_node", "net_link_az", "tangent_bearing", "dist_near_link"]
+        ]
+        wpnts = wpnts.assign(is_waypoint=0, stop_node=wpnts.b_node, ping_is_covered=0)
         wpnts = gpd.GeoDataFrame(wpnts, geometry=self.trace.geometry, crs=self.trace.crs)
 
-        wpnts.loc[abs(wpnts.tangent_bearing - wpnts.net_link_az) > 90, "stop_node"] = wpnts.b_node[
-            abs(wpnts.tangent_bearing - wpnts.net_link_az) > 90
-        ]
+        abs_diff = (wpnts.tangent_bearing - wpnts.net_link_az).abs()
+        wpnts.loc[abs_diff < 90, "stop_node"] = wpnts.a_node[abs_diff < 90]
+        wpnts.loc[(-abs_diff + 360).abs() < 90, "stop_node"] = wpnts.a_node[(-abs_diff + 360).abs() < 90]
         wpnts.iloc[[0, -1], wpnts.columns.get_loc("is_waypoint")] = 1
 
-        # For the last ping we actually want the TO node
-        if wpnts.stop_node.iloc[-1] == wpnts.b_node.iloc[-1]:
-            wpnts.iloc[-1, wpnts.columns.get_loc("stop_node")] = wpnts.a_node.iloc[-1]
+        col_loc = wpnts.columns.get_loc("stop_node")
+        if wpnts.link_id.unique().shape[0] > 1:
+            # For the last ping we actually want the TO node
+            if wpnts.stop_node.iloc[0] == wpnts.b_node.iloc[0]:
+                wpnts.iloc[0, col_loc] = wpnts.a_node.iloc[0]
+            else:
+                wpnts.iloc[0, col_loc] = wpnts.b_node.iloc[0]
         else:
-            wpnts.iloc[-1, wpnts.columns.get_loc("stop_node")] = wpnts.b_node.iloc[-1]
+            a_node = wpnts.a_node.values[0]
+            b_node = wpnts.b_node.values[0]
+            a_geo = wpnts.geometry.values[0]
+            b_geo = wpnts.geometry.values[-1]
+            link_geo = self.network.links.loc[wpnts.link_id.values[0]].geometry
+            if link_geo.project(a_geo) < link_geo.project(b_geo):
+                wpnts.iloc[0, col_loc] = a_node
+                wpnts.iloc[-1, col_loc] = b_node
+            else:
+                wpnts.iloc[0, col_loc] = b_node
+                wpnts.iloc[-1, col_loc] = a_node
 
-        self.__waypoints = wpnts
+        self._waypoints = wpnts
+        self.__candidate_links = list(wpnts.link_id.unique())
 
     def __add_waypoint(self):
-        stop_nodes = self.__waypoints[self.__waypoints.is_waypoint == 1].stop_node.values
-        df = self.__waypoints.loc[~self.__waypoints.ping_is_covered, :]
+        stop_nodes = self._waypoints[self._waypoints.is_waypoint == 1].stop_node.values
+        df = self._waypoints.loc[~self._waypoints.ping_is_covered, :]
         df = df.loc[df.is_waypoint == 0, :]
         df = df.assign(is_start=df.ping_id != 1 + df.ping_id.shift(1), is_end=df.ping_id != df.ping_id.shift(-1) - 1)
         missed_time = df.timestamp[df.is_end].values - df.timestamp[df.is_start].values
@@ -296,7 +333,7 @@ class Trip:
             end = df[df.is_end].iloc[worst_segment].ping_id
 
             # We will get the most frequent candidate stop node among our candidates to add as our next stop
-            candidates = self.__waypoints[(self.__waypoints.ping_id >= frm) & (self.__waypoints.ping_id <= end)]
+            candidates = self._waypoints[(self._waypoints.ping_id >= frm) & (self._waypoints.ping_id <= end)]
             candidates = candidates[~candidates.stop_node.isin(stop_nodes)]
             if candidates.shape[0] == 0:
                 continue
@@ -304,37 +341,28 @@ class Trip:
             ping_id = candidates[candidates.stop_node == stop_node].ping_id.values[0]
 
             # ping_id = frm + floor((end - frm) / 2)
-            if self.__waypoints.loc[self.__waypoints.ping_id == ping_id, "is_waypoint"].values[0] == 0:
+            if self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"].values[0] == 0:
                 break
-        self.__waypoints.loc[self.__waypoints.ping_id == ping_id, "is_waypoint"] = 1
+        self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"] = 2
 
     @property
     def match_quality(self):
         """Assesses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         if self.__match_quality < 0:
             buffer = self.parameters.map_matching.buffer_size
-            self.__waypoints.loc[:, "ping_is_covered"] = self.__waypoints.intersects(self.path_shape.buffer(buffer))[:]
-            self._debug = self.__waypoints
-            self.__match_quality = min(
-                1.0, self.__waypoints.ping_is_covered.sum() / max(self.trace.shape[0] - self.excluded_pings, 1)
-            )
+            self._waypoints.loc[:, "ping_is_covered"] = self._waypoints.intersects(self.path_shape.buffer(buffer))[:]
+            self.__match_quality = min(1.0, self._waypoints.ping_is_covered.sum() / self._waypoints.shape[0])
         return self.__match_quality
+
+    @property
+    def distance_ratio(self):
+        return self.path_shape.length / self.trace.trace_segment_dist.sum()
 
     @property
     def match_quality_raw(self):
         _ = self.match_quality
-        return min(1.0, self.__waypoints.ping_is_covered.sum() / max(self.trace.shape[0], 1))
-
-    @property
-    def excluded_pings(self):
-        if self.__excluded_pings < 0:
-            buffer = self.parameters.map_matching.buffer_size
-            too_far_to_count = self.__waypoints[~self.__waypoints.ping_is_covered]
-            too_far_to_count = too_far_to_count[too_far_to_count.dist_near_link > buffer]
-            self.__excluded_pings = too_far_to_count.shape[0]
-        return self.__excluded_pings
+        return min(1.0, self._waypoints.ping_is_covered.sum() / max(self.trace.shape[0], 1))
 
     def __reset(self):
         self.__match_quality = -1
         self.__geo_path = LineString([])
-        self.__excluded_pings = -1

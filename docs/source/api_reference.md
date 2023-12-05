@@ -60,14 +60,12 @@ Builds the network to be used in the project.
 
 *links* (`gpd.GeoDataFrame`): GeoDataFrame containing the network links
 
-*nodes* (`gpd.GeoDataFrame`): GeoDataFrame containing the network nodes
-
 *parameters* (`Parameters`): Map-Matching parameters.
 
 ```python
 from mapmatcher.network import Network
 
-network = Network(graph, links, nodes, parameters)
+network = Network(graph, links, parameters)
 ```
 
 ### **Methods:**
@@ -107,7 +105,7 @@ Sets the name of the output folder.
 #### `set_stop_algorithm(stop_algorithm)`
 Sets the stop algorithm.
 
-#### `load_network(graph: Graph, links: gpd.GeoDataFrame, nodes: Optional[gpd.GeoDataFrame])`
+#### `load_network(graph: Graph, links: gpd.GeoDataFrame)`
 Loads the project network.
 
 #### `load_gps_traces(gps_traces: Union[gpd.GeoDataFrame, PathLike], crs: Optional[int])`

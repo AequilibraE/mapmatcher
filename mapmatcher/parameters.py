@@ -21,7 +21,7 @@ class data_quality:
 class map_matching:
     # map matching related parameters
     cost_discount: float = 0.1  # link cost reduction ratio for links likely to be used
-    buffer_size: float = 50  # Buffer around the links to capture links likely used. Unit is meters
+    buffer_size: float = 20  # Buffer around the links to capture links likely used. Unit is meters
     minimum_match_quality: float = 0.99
     maximum_waypoints: int = 20
     heading_tolerance: float = 22.5  # tolerance to be used when comparing a link's direction with the link it seems to
