@@ -46,11 +46,11 @@ gdf = gpd.GeoDataFrame.from_postgis(sql, project.conn, geom_col="geom", crs=4326
 
 
 g = Graph()
-g.cost = gdf['distance'].to_numpy()
+g.cost = gdf["distance"].to_numpy()
 
 g.network = gdf
 g.network_ok = True
-g.status = 'OK'
+g.status = "OK"
 
 # We only need to give a node number to prepare the network due to a bug in AequilibraE 0.9.5
 g.prepare_graph(np.array([gdf.a_node.values[0]], np.int64))
