@@ -1,7 +1,7 @@
 """
 .. _example_matching_aequilibrae_model:
 
-Matching with an AequilibraE Model
+Matching with a generic network
 ==================================
 
 
@@ -12,7 +12,10 @@ import uuid
 from os.path import join
 from tempfile import gettempdir
 
+import geopandas as gpd
+import numpy as np
 from aequilibrae.utils.create_example import create_example
+from aequilibrae.paths import Graph
 
 from mapmatcher import MapMatcher
 from mapmatcher.examples import nauru_data
@@ -29,18 +32,39 @@ nauru_gps.head()
 nauru_gps.rename(columns={"x": "longitude", "y": "latitude", "vehicle_unique_id": "trace_id"}, inplace=True)
 
 # %%
-# We get our AequilibraE model for Nauru and create the map-mather from this model
-# We also need to provide the transportation mode we want to consider for the
-# map-matching
+# Let's get a Nauru example from AequilibraE and extract the link network from it
 project = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
 
-# We need to have at least one centroid connector to the model due to a bug in AequilibraE 0.9.5
-project.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
-mmatcher = MapMatcher.from_aequilibrae(project, "c")
+sql = "SELECT link_id, a_node, b_node, direction, distance, Hex(ST_AsBinary(geometry)) as geom FROM links"
+gdf = gpd.GeoDataFrame.from_postgis(sql, project.conn, geom_col="geom", crs=4326)
+
 
 # %%
-# let's add the GPS data to the map-matcher and run it!
+# Let's build a graph with the network.
+# For that, you need ta few key fields in the network: [link_id, a_node, b_node, direction]
+# You also need a cost field for your graph, which is *distance* in our case
+
+
+g = Graph()
+g.cost = gdf["distance"].to_numpy()
+
+g.network = gdf
+g.network_ok = True
+g.status = "OK"
+
+# We only need to give a node number to prepare the network due to a bug in AequilibraE 0.9.5
+g.prepare_graph(np.array([gdf.a_node.values[0]], np.int64))
+g.set_graph("distance")
+g.set_skimming(["distance"])
+g.set_blocked_centroid_flows(False)
+
+# %%
+# let's build the map-matcher object and run it!
+mmatcher = MapMatcher()
+mmatcher.load_network(graph=g, links=gdf)
 mmatcher.load_gps_traces(nauru_gps)
+
+# Let's run it single-threaded
 mmatcher.map_match(parallel_threads=1)
 
 # %%
