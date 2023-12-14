@@ -117,14 +117,14 @@ class MapMatcher:
         for _, gdf in self.__traces.groupby(["trace_id"]):
             self.trips.append(Trip(gps_trace=gdf, parameters=self.parameters, network=self.network))
 
-    def map_match(self, ignore_errors=False, paralell_threads: int = 0):
+    def map_match(self, ignore_errors=False, parallel_threads: int = 0):
         """Executes map-matching.
 
         :Arguments:
             **ignore_errors** (:obj:`bool`): Attempts to perform map-matching even when the data does not meet all
             data quality criteria
 
-            **paralell_threads** (:obj:`int`, optional): Number of CPU threads to use. Defaults to all
+            **parallel_threads** (:obj:`int`, optional): Number of CPU threads to use. Defaults to all
 
         :Returns:
 
@@ -132,9 +132,9 @@ class MapMatcher:
         """
         self.network._orig_crs = self.__orig_crs
         success = 0
-        if paralell_threads <= 0:
-            paralell_threads = max(1, mp.cpu_count() - int(paralell_threads))
-        if paralell_threads == 1:
+        if parallel_threads <= 0:
+            parallel_threads = max(1, mp.cpu_count() - int(parallel_threads))
+        if parallel_threads == 1:
             self.__logger()
             logging.critical("Building up data structures")
             self._build_trips()
@@ -151,7 +151,7 @@ class MapMatcher:
                 return [all_ids[i : i + threads] for i in range(0, len(all_ids), threads)]
 
             all_ids = self.__traces.trace_id.unique()
-            all_jobs = jobs(all_ids, ceil(len(all_ids) / paralell_threads))
+            all_jobs = jobs(all_ids, ceil(len(all_ids) / parallel_threads))
 
             self.__traces = self.__traces.assign(chunk_id__=0)
             for i, trace_set in enumerate(all_jobs):
@@ -163,7 +163,7 @@ class MapMatcher:
                 all_trips.extend(trip_list)
 
             logging.getLogger("mapmatcher").info("Starting parallel processing")
-            with mp.Pool(int(min(paralell_threads, len(all_jobs)))) as pool:
+            with mp.Pool(int(min(parallel_threads, len(all_jobs)))) as pool:
                 for _, job_gdf in self.__traces.groupby("chunk_id__"):
                     pool.apply_async(
                         run_trips,

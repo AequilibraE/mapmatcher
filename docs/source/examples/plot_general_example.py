@@ -65,7 +65,7 @@ mmatcher.load_network(graph=g, links=gdf)
 mmatcher.load_gps_traces(nauru_gps)
 
 # Let's run it single-threaded
-mmatcher.map_match(paralell_threads=1)
+mmatcher.map_match(parallel_threads=1)
 
 # %%
 for trip in mmatcher.trips:

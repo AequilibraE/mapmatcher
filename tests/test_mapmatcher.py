@@ -41,5 +41,5 @@ def test_mapmatcher(gps_traces, network):
     mm.parameters.map_matching.maximum_waypoints = 2
     mm.network = network
     mm.load_gps_traces(gps_traces)
-    mm.map_match(True, paralell_threads=1)
+    mm.map_match(True, parallel_threads=1)
     assert len(mm.trips) == len(gps_traces.trace_id.unique())
