@@ -37,6 +37,7 @@ project = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
 
 sql = "SELECT link_id, a_node, b_node, direction, distance, Hex(ST_AsBinary(geometry)) as geom FROM links"
 gdf = gpd.GeoDataFrame.from_postgis(sql, project.conn, geom_col="geom", crs=4326)
+gdf.head()
 
 
 # %%
