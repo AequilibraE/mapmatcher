@@ -45,11 +45,30 @@ process, and they are listed below:
 
 * match_quality_raw: Share of the GPS pings that within the defined buffer distance from the map-matched path result
 
-* match_quality: Similar to the *match_quality_raw* above, but only considers GPS pings that have at least one network link closer than the buffer distance
+* match_quality: Similar to the *match_quality_raw* above, but only considers GPS pings that have at least one network
+  link closer than the buffer distance
 
 * middle_points_required: The number of waypoints required to reproduce the final path
 
-* distance_ratio: The distance of the final path shape created after the map-matching and the straight line distance connecting all points in the trace
+* distance_ratio: The distance of the final path shape created after the map-matching and the straight line distance
+  connecting all points in the trace
+
+* _unmatchable: Although not an actual quality measure, a list of GPS pings that cannot be matched because are farther
+  from all links than the user-defined buffer is available. Each one of these pings is classified as whether happening
+  at the beginning, end or middle of the GPS trace provided
+
+Accessing each one of these elements is trivial
+
+.. code-block:: python
+
+    >>> # after map-matching
+    >>>
+    >>> trip = map_matcher.trips[0]
+    >>> trip.match_quality_raw
+    >>> trip.match_quality
+    >>> trip.middle_points_required
+    >>> trip.distance_ratio
+    >>> trip._unmatchable
 
 Stop Finding
 ------------

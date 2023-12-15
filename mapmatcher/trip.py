@@ -9,12 +9,11 @@ import numpy as np
 import pandas as pd
 from aequilibrae.paths.results import PathResults
 from shapely.geometry import LineString
-from shapely.ops import linemerge, substring
+from shapely.ops import substring
 
 from mapmatcher.linebearing import bearing_for_gps
 from mapmatcher.network import Network
 from .parameters import Parameters
-from .utils import check_lines_aligned
 
 
 class Trip:
@@ -54,6 +53,18 @@ class Trip:
         self.warnings = []
         self.__geo_path = LineString([])
         self.__mm_results = pd.DataFrame([], columns=["links", "direction", "milepost"])
+        self._unmatchable = gpd.GeoDataFrame(
+            pd.DataFrame(
+                [],
+                columns=[
+                    "ping_id",
+                    "trace_id",
+                    "timestamp",
+                    "position",
+                    "geometry",
+                ],
+            )
+        )
         self.network = network
         self._err = ["Data not loaded yet"]
         self.middle_waypoints_required = 0
@@ -265,6 +276,7 @@ class Trip:
         # Adds information on all the
         self._waypoints = self.trace.sjoin_nearest(self.network.links.reset_index(), distance_col="dist_near_link")
         bf = self.parameters.map_matching.buffer_size
+        outside = self._waypoints[self._waypoints.dist_near_link > bf]
         self._waypoints = self._waypoints[self._waypoints.dist_near_link <= bf]
         if self._waypoints.shape[0] < dqp.minimum_pings:
             pings = self.trace.shape[0]
@@ -274,6 +286,14 @@ class Trip:
             self.__network_links()
             if len(self._waypoints.stop_node.unique()) < 2:
                 self._err.append("All valid GPS ping map to a single point in the network")
+
+        if outside.shape[0] > 0:
+            outside = outside.assign(position="middle")
+            outside.loc[outside.ping_id < self._waypoints.ping_id.min(), "position"] = "before start"
+            outside.loc[outside.ping_id > self._waypoints.ping_id.max(), "position"] = "after end"
+            self._unmatchable = gpd.GeoDataFrame(
+                outside[["ping_id", "trace_id", "timestamp", "position"]], geometry=outside.geometry, crs=self.trace.crs
+            )
 
     def compute_stops(self):
         """Compute stops."""

@@ -49,7 +49,7 @@ def test_trip(gps_trace, param, network):
     assert not trp.has_error
 
 
-def test_bufer_size(gps_trace, param, network):
+def test_buffer_size(gps_trace, param, network):
     param.map_matching.buffer_size = 50
     param.data_quality.maximum_jittery = 0.01
     param.data_quality.max_speed_time = 0
@@ -61,3 +61,14 @@ def test_bufer_size(gps_trace, param, network):
     assert "from any network lin" in error
     assert "jitter" in error
     assert "surpassed" in error
+
+
+def test_unmatchable(gps_trace, param, network):
+    param.map_matching.buffer_size = 0.1
+
+    trp = Trip(gps_trace=gps_trace, parameters=param, network=network)
+
+    param.map_matching.buffer_size = 10000000000000000
+    trp2 = Trip(gps_trace=gps_trace, parameters=param, network=network)
+
+    assert trp._unmatchable.shape[0] == trp2.trace.shape[0]
