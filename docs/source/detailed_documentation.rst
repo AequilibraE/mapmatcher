@@ -20,7 +20,7 @@ reducing the number of path-finding operations executed.
 Algorithm parameters
 ++++++++++++++++++++
 
-The map-matching algorithm implemented in *mapmatcher* has 5 built-in parameters that can be tuned
+The map-matching algorithm implemented in *mapmatcher* has 6 built-in parameters that can be tuned
 for a particular application, and their default values and purses are presented below:
 
 .. code-block:: python
@@ -33,6 +33,7 @@ for a particular application, and their default values and purses are presented 
     >>> par.map_matching.minimum_match_quality: float = 0.99 # *match_quality* expected to be matched
     >>> par.map_matching.maximum_waypoints: int = 20 # Number of middle waypoints attempted by the algorithm
     >>> par.map_matching.heading_tolerance: float = 22.5  # tolerance to be used when comparing a link's direction with the link it seems to be associated with
+    >>> par.map_matching.keep_ping_classification: bool = True  # Keeps a record of the GPS points that are too far from the network to ever be matched
 
 
 Further to these parameters, the user
@@ -45,11 +46,28 @@ process, and they are listed below:
 
 * match_quality_raw: Share of the GPS pings that within the defined buffer distance from the map-matched path result
 
-* match_quality: Similar to the *match_quality_raw* above, but only considers GPS pings that have at least one network link closer than the buffer distance
+* match_quality: Similar to the *match_quality_raw* above, but only considers GPS pings that have at least one network
+  link closer than the buffer distance
 
 * middle_points_required: The number of waypoints required to reproduce the final path
 
-* distance_ratio: The distance of the final path shape created after the map-matching and the straight line distance connecting all points in the trace
+* distance_ratio: The distance of the final path shape created after the map-matching and the straight line distance
+  connecting all points in the trace
+
+* _unmatchable: A list of GPS pings that could not form part of the matching as they are outside the buffer distance from ALL network links. Technically this is a metric relating to data quality rather than to match quality. Each of the pings is classified as occuring before the first valid ping, after the last valid ping or in between the two.
+
+Each of these elements is accessible as a property of the trip:
+
+.. code-block:: python
+
+    >>> # after map-matching
+    >>>
+    >>> trip = map_matcher.trips[0]
+    >>> trip.match_quality_raw
+    >>> trip.match_quality
+    >>> trip.middle_points_required
+    >>> trip.distance_ratio
+    >>> trip._unmatchable
 
 Stop Finding
 ------------
