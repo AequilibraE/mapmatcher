@@ -55,7 +55,7 @@ process, and they are listed below:
 
 * _unmatchable: A list of GPS pings that could not form part of the matching as they are outside the buffer distance from ALL network links. Technically this is a metric relating to data quality rather than to match quality. Each of the pings is classified as occuring before the first valid ping, after the last valid ping or in between the two.
 
-Accessing each one of these elements is trivial
+Each of these elements is accessible as a property of the trip:
 
 .. code-block:: python
 
