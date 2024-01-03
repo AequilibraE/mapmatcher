@@ -53,9 +53,7 @@ process, and they are listed below:
 * distance_ratio: The distance of the final path shape created after the map-matching and the straight line distance
   connecting all points in the trace
 
-* _unmatchable: Although not an actual quality measure, a list of GPS pings that cannot be matched because are farther
-  from all links than the user-defined buffer is available. Each one of these pings is classified as whether happening
-  at the beginning, end or middle of the GPS trace provided
+* _unmatchable: A list of GPS pings that could not form part of the matching as they are outside the buffer distance from ALL network links. Technically this is a metric relating to data quality rather than to match quality. Each of the pings is classified as occuring before the first valid ping, after the last valid ping or in between the two.
 
 Accessing each one of these elements is trivial
 
