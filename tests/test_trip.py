@@ -66,10 +66,13 @@ def test_buffer_size(gps_trace, param, network):
 
 def test_unmatchable(gps_trace, param, network):
     param.map_matching.buffer_size = 0.1
-
+    param.map_matching.keep_ping_classification = True
+    param.map_matching.buffer_size = 0
     trp = Trip(gps_trace=gps_trace, parameters=param, network=network)
+
+    assert trp._unmatchable.shape[0] == trp.trace.shape[0]
 
     param.map_matching.buffer_size = 10000000000000000
     trp2 = Trip(gps_trace=gps_trace, parameters=param, network=network)
 
-    assert trp._unmatchable.shape[0] == trp2.trace.shape[0]
+    assert trp2._unmatchable.shape[0] == 0
