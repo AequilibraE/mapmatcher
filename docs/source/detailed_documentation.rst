@@ -20,7 +20,7 @@ reducing the number of path-finding operations executed.
 Algorithm parameters
 ++++++++++++++++++++
 
-The map-matching algorithm implemented in *mapmatcher* has 5 built-in parameters that can be tuned
+The map-matching algorithm implemented in *mapmatcher* has 6 built-in parameters that can be tuned
 for a particular application, and their default values and purses are presented below:
 
 .. code-block:: python
@@ -33,6 +33,7 @@ for a particular application, and their default values and purses are presented 
     >>> par.map_matching.minimum_match_quality: float = 0.99 # *match_quality* expected to be matched
     >>> par.map_matching.maximum_waypoints: int = 20 # Number of middle waypoints attempted by the algorithm
     >>> par.map_matching.heading_tolerance: float = 22.5  # tolerance to be used when comparing a link's direction with the link it seems to be associated with
+    >>> par.map_matching.keep_ping_classification: bool = True  # Keeps a record of the GPS points that are too far from the network to ever be matched
 
 
 Further to these parameters, the user

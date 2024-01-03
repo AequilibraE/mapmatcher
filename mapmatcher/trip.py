@@ -287,7 +287,7 @@ class Trip:
             if len(self._waypoints.stop_node.unique()) < 2:
                 self._err.append("All valid GPS ping map to a single point in the network")
 
-        if outside.shape[0] > 0:
+        if self.parameters.map_matching.keep_ping_classification & outside.shape[0] > 0:
             outside = outside.assign(position="middle")
             outside.loc[outside.ping_id < self._waypoints.ping_id.min(), "position"] = "before start"
             outside.loc[outside.ping_id > self._waypoints.ping_id.max(), "position"] = "after end"

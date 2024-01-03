@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import gettempdir
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pytest
 from aequilibrae.utils.create_example import create_example
@@ -27,7 +28,7 @@ def network() -> Network:
     proj.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
     proj.network.build_graphs(modes=["c"])
     graph = proj.network.graphs["c"]
-
+    graph.prepare_graph(np.array([1], int))
     graph.set_graph("distance")
     link_sql = """SELECT link_id, a_node, b_node, Hex(ST_AsBinary(geometry)) as geometry FROM links where instr(modes, "c")>0;"""
     links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)

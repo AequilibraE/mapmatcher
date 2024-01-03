@@ -24,6 +24,9 @@ class map_matching:
     buffer_size: float = 20  # Buffer around the links to capture links likely used. Unit is meters
     minimum_match_quality: float = 0.99
     maximum_waypoints: int = 20
+    keep_ping_classification: bool = (
+        True  # Keeps a record of the GPS points that are too far from the network to ever be matched
+    )
     heading_tolerance: float = 22.5  # tolerance to be used when comparing a link's direction with the link it seems to
     # be associated with
 
