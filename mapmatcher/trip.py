@@ -123,8 +123,8 @@ class Trip:
             if len(links) > 1 and links[0] == links[-1]:
                 directions = directions[1:]
                 links = links[1:]
-                mileposts = mileposts[1:]
                 mileposts[:] -= mileposts[0]
+                mileposts = mileposts[1:]
 
             # Removes double backs in the end of the trip
             if len(links) > 1 and links[-1] == links[-2]:
