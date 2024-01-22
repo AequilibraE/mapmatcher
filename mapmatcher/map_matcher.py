@@ -114,7 +114,7 @@ class MapMatcher:
 
     def _build_trips(self):
         self.trips.clear()
-        for _, gdf in self.__traces.groupby(["trace_id"]):
+        for _, gdf in tqdm(self.__traces.groupby(["trace_id"]), "building trips"):
             self.trips.append(Trip(gps_trace=gdf, parameters=self.parameters, network=self.network))
 
     def map_match(self, ignore_errors=False, parallel_threads: int = 0):

@@ -120,14 +120,17 @@ class Trip:
                 pos = mileposts[-1]
 
             # Removes double backs in the start of the trip
-            if links[0] == links[-1]:
+            if len(links) > 1 and links[0] == links[-1]:
                 directions = directions[1:]
                 links = links[1:]
+                mileposts = mileposts[1:]
+                mileposts[:] -= mileposts[0]
 
             # Removes double backs in the end of the trip
-            if links[-1] == links[-2]:
+            if len(links) > 1 and links[-1] == links[-2]:
                 directions = directions[:-1]
                 links = links[:-1]
+                mileposts = mileposts[:-1]
 
             self.__mm_results = pd.DataFrame({"links": links, "direction": directions, "milepost": mileposts})
             if self.match_quality >= par.minimum_match_quality:
