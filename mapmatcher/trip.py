@@ -53,18 +53,10 @@ class Trip:
         self.warnings = []
         self.__geo_path = LineString([])
         self.__mm_results = pd.DataFrame([], columns=["links", "direction", "milepost"])
-        self._unmatchable = gpd.GeoDataFrame(
-            pd.DataFrame(
-                [],
-                columns=[
-                    "ping_id",
-                    "trace_id",
-                    "timestamp",
-                    "position",
-                    "geometry",
-                ],
-            )
-        )
+
+        columns = ["ping_id", "trace_id", "timestamp", "position", "geometry"]
+        self._unmatchable = gpd.GeoDataFrame(pd.DataFrame([], columns=columns))
+
         self.network = network
         self._err = ["Data not loaded yet"]
         self.middle_waypoints_required = 0
@@ -126,6 +118,20 @@ class Trip:
                 directions.extend(list(res.path_link_directions))
                 mileposts.extend(list(res.milepost[1:] + pos))
                 pos = mileposts[-1]
+
+            # Removes double backs in the end of the trip
+            while len(links) > 1 and links[-1] == links[-2]:
+                directions = directions[:-1]
+                links = links[:-1]
+                mileposts = mileposts[:-1]
+
+            # Removes double backs in the start of the trip
+            while len(links) > 1 and links[0] == links[1]:
+                directions = directions[1:]
+                links = links[1:]
+                mileposts[:] -= mileposts[0]
+                mileposts = mileposts[1:]
+
             self.__mm_results = pd.DataFrame({"links": links, "direction": directions, "milepost": mileposts})
             if self.match_quality >= par.minimum_match_quality:
                 self.__reset()
@@ -314,16 +320,15 @@ class Trip:
 
         abs_diff = (wpnts.tangent_bearing - wpnts.net_link_az).abs()
         wpnts.loc[abs_diff < 90, "stop_node"] = wpnts.a_node[abs_diff < 90]
-        wpnts.loc[(-abs_diff + 360).abs() < 90, "stop_node"] = wpnts.a_node[(-abs_diff + 360).abs() < 90]
         wpnts.iloc[[0, -1], wpnts.columns.get_loc("is_waypoint")] = 1
 
         col_loc = wpnts.columns.get_loc("stop_node")
         if wpnts.link_id.unique().shape[0] > 1:
             # For the last ping we actually want the TO node
-            if wpnts.stop_node.iloc[0] == wpnts.b_node.iloc[0]:
-                wpnts.iloc[0, col_loc] = wpnts.a_node.iloc[0]
+            if wpnts.stop_node.iloc[-1] == wpnts.b_node.iloc[-1]:
+                wpnts.iloc[-1, col_loc] = wpnts.a_node.iloc[-1]
             else:
-                wpnts.iloc[0, col_loc] = wpnts.b_node.iloc[0]
+                wpnts.iloc[-1, col_loc] = wpnts.b_node.iloc[-1]
         else:
             a_node = wpnts.a_node.values[0]
             b_node = wpnts.b_node.values[0]

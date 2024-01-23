@@ -16,8 +16,8 @@ def bearing_for_gps(trace: gpd.GeoDataFrame):
 def bearing_for_lines(line_gdf: gpd.GeoDataFrame):
     points = line_gdf.geometry.extract_unique_points().explode(index_parts=True).reset_index()
 
-    first = points.loc[points.groupby(["link_id"]).level_1.idxmin()][["link_id", 0]].rename(columns={0: "first_geo"})
-    last = points.loc[points.groupby(["link_id"]).level_1.idxmax()][["link_id", 0]].rename(columns={0: "last_geo"})
+    first = points.loc[points.groupby(["link_id"]).level_1.idxmax()][["link_id", 0]].rename(columns={0: "first_geo"})
+    last = points.loc[points.groupby(["link_id"]).level_1.idxmin()][["link_id", 0]].rename(columns={0: "last_geo"})
     data = first.merge(last, on="link_id")
 
     first_ = gpd.GeoSeries(data.first_geo)
@@ -30,13 +30,12 @@ def bearing_for_lines(line_gdf: gpd.GeoDataFrame):
 
 
 def vectorized_line_bearing(lat1, long1, lat2, long2):
-    latA = np.radians(lat1)
-    latB = np.radians(lat2)
+    latA = lat1
+    latB = lat2
 
-    delta_long = np.radians(long2 - long1)
+    delta_long = long2 - long1
 
     x = np.sin(delta_long) * np.cos(latB)
     y = np.cos(latA) * np.sin(latB) - (np.sin(latA) * np.cos(latB) * np.cos(delta_long))
     bearing_radians = np.arctan2(x, y)
-    bearing_degrees = np.degrees(bearing_radians) + 180
-    return (bearing_degrees + 360) % 360
+    return np.degrees(bearing_radians)

@@ -1,1 +1,0 @@
-from .check_if_aligned import check_lines_aligned
