@@ -16,8 +16,8 @@ def bearing_for_gps(trace: gpd.GeoDataFrame):
 def bearing_for_lines(line_gdf: gpd.GeoDataFrame):
     points = line_gdf.geometry.extract_unique_points().explode(index_parts=True).reset_index()
 
-    first = points.loc[points.groupby(["link_id"]).level_1.idxmax()][["link_id", 0]].rename(columns={0: "first_geo"})
-    last = points.loc[points.groupby(["link_id"]).level_1.idxmin()][["link_id", 0]].rename(columns={0: "last_geo"})
+    first = points.loc[points.groupby(["link_id"]).level_1.idxmin()][["link_id", 0]].rename(columns={0: "first_geo"})
+    last = points.loc[points.groupby(["link_id"]).level_1.idxmax()][["link_id", 0]].rename(columns={0: "last_geo"})
     data = first.merge(last, on="link_id")
 
     first_ = gpd.GeoSeries(data.first_geo)
