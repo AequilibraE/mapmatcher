@@ -129,20 +129,22 @@ class Trip:
             curr_match_quality = self.match_quality
 
             self.__reset()
+
+            # Removes double backs in the end of the trip
+            while self.__results.shape[0] > 1 and self.__results.links.values[-1] == self.__results.links.values[-2]:
+                self.__results = self.__results.iloc[:-1, :]
+
+            # Removes double backs in the start of the trip
+            while self.__results.shape[0] > 1 and self.__results.links.values[0] == self.__results.links.values[1]:
+                self.__results = self.__results.iloc[1:, :]
+
             self.__add_waypoint()
             self.middle_waypoints_required = waypoint_count
-
-        # Removes double backs in the end of the trip
-        while self.__results.shape[0] > 1 and self.__results.links.values[-1] == self.__results.links.values[-2]:
-            self.__results = self.__results.iloc[:-1, :]
-
-        # Removes double backs in the start of the trip
-        while self.__results.shape[0] > 1 and self.__results.links.values[0] == self.__results.links.values[1]:
-            self.__results = self.__results.iloc[1:, :]
 
         self._waypoints.loc[self._waypoints.is_waypoint == 2, "stop_node"] = 1
         self.mm_time += perf_counter()
         self.__map_matched = 1
+        self.__reset()
         _ = self.match_quality
 
     @property
@@ -155,11 +157,11 @@ class Trip:
     @property
     def path_shape(self) -> LineString:
         """Returns the `shapely.LineString` that represents the map-matched path."""
-        if not self.__geo_path.length:
+        if self.__geo_path.length == 0:
             links = self.network.links.loc[self.__results.links.to_numpy(), :].reset_index()
 
             geo_data = []
-            points = self._waypoints[self._waypoints.ping_is_covered.astype(int) == 1].geometry
+            points = self._waypoints[self._waypoints.dist_near_link < self.parameters.map_matching.buffer_size].geometry
             for (i_d, rec), direction in zip(links.iterrows(), self.__results.direction.to_numpy()):
                 geo = rec.geometry.coords if direction > 0 else rec.geometry.coords[::-1]
                 found_line = True
@@ -217,7 +219,6 @@ class Trip:
             raise ValueError("trace_id is not unique")
 
         self.trace.sort_values("timestamp", inplace=True)
-        self.trace = self.trace.assign(tangent_bearing=bearing_for_gps(self.trace))
 
         self.id = self.trace.trace_id.values[0]
 
@@ -279,6 +280,9 @@ class Trip:
         bf = self.parameters.map_matching.buffer_size
         outside = self._waypoints[self._waypoints.dist_near_link > bf]
         self._waypoints = self._waypoints[self._waypoints.dist_near_link <= bf]
+        self._waypoints = self._waypoints.assign(
+            tangent_bearing=bearing_for_gps(self._waypoints) if self._waypoints.shape[0] > 1 else 0
+        )
         if self._waypoints.shape[0] < dqp.minimum_pings:
             pings = self.trace.shape[0]
             minp = self._waypoints.shape[0]
@@ -363,6 +367,23 @@ class Trip:
             # ping_id = frm + floor((end - frm) / 2)
             if self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"].values[0] == 0:
                 break
+
+        # We check if the first and last links are correctly placed
+        col_loc = self._waypoints.columns.get_loc("stop_node")
+        a_loc = self._waypoints.columns.get_loc("a_node")
+        b_loc = self._waypoints.columns.get_loc("b_node")
+        if self._waypoints.link_id.iloc[0] not in self.__results.links.values:
+            if self._waypoints.iloc[0, col_loc] == self._waypoints.iloc[0, a_loc]:
+                self._waypoints.iloc[0, col_loc] = self._waypoints.iloc[0, b_loc]
+            else:
+                self._waypoints.iloc[0, col_loc] = self._waypoints.iloc[0, a_loc]
+
+        if self._waypoints.link_id.iloc[-1] not in self.__results.links.values:
+            if self._waypoints.iloc[-1, col_loc] == self._waypoints.iloc[-1, a_loc]:
+                self._waypoints.iloc[-1, col_loc] = self._waypoints.iloc[-1, b_loc]
+            else:
+                self._waypoints.iloc[-1, col_loc] = self._waypoints.iloc[-1, a_loc]
+
         self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"] = 2
 
     @property
