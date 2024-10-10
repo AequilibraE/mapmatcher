@@ -50,7 +50,7 @@ g = Graph()
 g.cost = gdf["distance"].to_numpy()
 
 g.network = gdf
-
+g.prepare_graph()
 g.set_graph("distance")
 g.set_skimming(["distance"])
 g.set_blocked_centroid_flows(False)
