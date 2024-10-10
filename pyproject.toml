@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "aequilibrae>=0.9.5", "geopandas>=0.14.1", "wheel"]
+requires = ["setuptools>=61.0", "aequilibrae>=1.0.0", "geopandas>=0.14.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -25,7 +25,7 @@ classifiers = [
 ]
 
 dependencies = [
-    'aequilibrae',
+    'aequilibrae>=1.0.0"',
     'geopandas>=0.14.1',
     'tqdm'
 ]

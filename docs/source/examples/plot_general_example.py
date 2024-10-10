@@ -50,11 +50,7 @@ g = Graph()
 g.cost = gdf["distance"].to_numpy()
 
 g.network = gdf
-g.network_ok = True
-g.status = "OK"
 
-# We only need to give a node number to prepare the network due to a bug in AequilibraE 0.9.5
-g.prepare_graph(np.array([gdf.a_node.values[0]], np.int64))
 g.set_graph("distance")
 g.set_skimming(["distance"])
 g.set_blocked_centroid_flows(False)
