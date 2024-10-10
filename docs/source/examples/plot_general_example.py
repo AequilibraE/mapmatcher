@@ -52,7 +52,7 @@ g.cost = gdf["distance"].to_numpy()
 g.network = gdf
 
 # Let's say nodes 1 through 133 are centroids
-g.prepare_graph(centroids=[i for i in range(1, 134)])
+g.prepare_graph(centroids=np.arange(133) + 1)
 g.set_graph("distance")
 g.set_skimming(["distance"])
 g.set_blocked_centroid_flows(False)
