@@ -27,7 +27,7 @@ jobs:
         run: |
           ruff --version
           black --version
-          ruff .
+          ruff check .
           black --check .
 
   unit_tests:
