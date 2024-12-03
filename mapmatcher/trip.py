@@ -52,7 +52,7 @@ class Trip:
         self._waypoints: Optional[gpd.GeoDataFrame] = None
         self.warnings = []
         self.__geo_path = LineString([])
-        self.__mm_results = pd.DataFrame([], columns=["links", "direction", "milepost"])
+        self.__results = pd.DataFrame([], columns=["links", "direction", "milepost"])
 
         columns = ["ping_id", "trace_id", "timestamp", "position", "geometry"]
         self._unmatchable = gpd.GeoDataFrame(pd.DataFrame([], columns=columns))
@@ -86,8 +86,7 @@ class Trip:
             self.__map_match()
         except Exception as e:
             self._err = [f"Critical failures. {traceback.print_exc()}"]
-            logging.getLogger("mapmatcher").critical(e.args)
-            print(e)
+            logging.critical(e.args)
 
     def __map_match(self):
         if not self._waypoints.shape[0]:
@@ -118,21 +117,7 @@ class Trip:
                 directions.extend(list(res.path_link_directions))
                 mileposts.extend(list(res.milepost[1:] + pos))
                 pos = mileposts[-1]
-
-            # Removes double backs in the end of the trip
-            while len(links) > 1 and links[-1] == links[-2]:
-                directions = directions[:-1]
-                links = links[:-1]
-                mileposts = mileposts[:-1]
-
-            # Removes double backs in the start of the trip
-            while len(links) > 1 and links[0] == links[1]:
-                directions = directions[1:]
-                links = links[1:]
-                mileposts[:] -= mileposts[0]
-                mileposts = mileposts[1:]
-
-            self.__mm_results = pd.DataFrame({"links": links, "direction": directions, "milepost": mileposts})
+            self.__results = pd.DataFrame({"links": links, "direction": directions, "milepost": mileposts})
             if self.match_quality >= par.minimum_match_quality:
                 self.__reset()
                 break
@@ -143,11 +128,22 @@ class Trip:
             curr_match_quality = self.match_quality
 
             self.__reset()
+
+            # Removes double backs in the end of the trip
+            while self.__results.shape[0] > 1 and self.__results.links.values[-1] == self.__results.links.values[-2]:
+                self.__results = self.__results.iloc[:-1, :]
+
+            # Removes double backs in the start of the trip
+            while self.__results.shape[0] > 1 and self.__results.links.values[0] == self.__results.links.values[1]:
+                self.__results = self.__results.iloc[1:, :]
+
             self.__add_waypoint()
             self.middle_waypoints_required = waypoint_count
+
         self._waypoints.loc[self._waypoints.is_waypoint == 2, "stop_node"] = 1
         self.mm_time += perf_counter()
         self.__map_matched = 1
+        self.__reset()
         _ = self.match_quality
 
     @property
@@ -160,12 +156,12 @@ class Trip:
     @property
     def path_shape(self) -> LineString:
         """Returns the `shapely.LineString` that represents the map-matched path."""
-        if not self.__geo_path.length:
-            links = self.network.links.loc[self.__mm_results.links.to_numpy(), :].reset_index()
+        if self.__geo_path.length == 0:
+            links = self.network.links.loc[self.__results.links.to_numpy(), :].reset_index()
 
             geo_data = []
-            points = self._waypoints[self._waypoints.ping_is_covered.astype(int) == 1].geometry
-            for (i_d, rec), direction in zip(links.iterrows(), self.__mm_results.direction.to_numpy()):
+            points = self._waypoints[self._waypoints.dist_near_link < self.parameters.map_matching.buffer_size].geometry
+            for (i_d, rec), direction in zip(links.iterrows(), self.__results.direction.to_numpy()):
                 geo = rec.geometry.coords if direction > 0 else rec.geometry.coords[::-1]
                 found_line = True
                 if points.shape[0]:
@@ -189,9 +185,9 @@ class Trip:
     @property
     def result(self):
         """Returns a GeoDataFrame containing the network links selected in map-matching."""
-        links = self.network.links.loc[self.__mm_results.links.to_numpy(), :]
+        links = self.network.links.loc[self.__results.links.to_numpy(), :]
         # return links
-        return gpd.GeoDataFrame(self.__mm_results, geometry=links.geometry.values, crs=links.crs).to_crs(
+        return gpd.GeoDataFrame(self.__results, geometry=links.geometry.values, crs=links.crs).to_crs(
             self.network._orig_crs
         )
 
@@ -222,7 +218,6 @@ class Trip:
             raise ValueError("trace_id is not unique")
 
         self.trace.sort_values("timestamp", inplace=True)
-        self.trace = self.trace.assign(tangent_bearing=bearing_for_gps(self.trace))
 
         self.id = self.trace.trace_id.values[0]
 
@@ -284,6 +279,9 @@ class Trip:
         bf = self.parameters.map_matching.buffer_size
         outside = self._waypoints[self._waypoints.dist_near_link > bf]
         self._waypoints = self._waypoints[self._waypoints.dist_near_link <= bf]
+        self._waypoints = self._waypoints.assign(
+            tangent_bearing=bearing_for_gps(self._waypoints) if self._waypoints.shape[0] > 1 else 0
+        )
         if self._waypoints.shape[0] < dqp.minimum_pings:
             pings = self.trace.shape[0]
             minp = self._waypoints.shape[0]
@@ -347,7 +345,7 @@ class Trip:
 
     def __add_waypoint(self):
         stop_nodes = self._waypoints[self._waypoints.is_waypoint == 1].stop_node.values
-        df = self._waypoints.loc[~self._waypoints.ping_is_covered, :]
+        df = self._waypoints.loc[self._waypoints.ping_is_covered == 0, :]
         df = df.loc[df.is_waypoint == 0, :]
         df = df.assign(is_start=df.ping_id != 1 + df.ping_id.shift(1), is_end=df.ping_id != df.ping_id.shift(-1) - 1)
         missed_time = df.timestamp[df.is_end].values - df.timestamp[df.is_start].values
@@ -368,14 +366,31 @@ class Trip:
             # ping_id = frm + floor((end - frm) / 2)
             if self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"].values[0] == 0:
                 break
+
+        # We check if the first and last links are correctly placed
+        col_loc = self._waypoints.columns.get_loc("stop_node")
+        a_loc = self._waypoints.columns.get_loc("a_node")
+        b_loc = self._waypoints.columns.get_loc("b_node")
+        if self._waypoints.link_id.iloc[0] not in self.__results.links.values:
+            if self._waypoints.iloc[0, col_loc] == self._waypoints.iloc[0, a_loc]:
+                self._waypoints.iloc[0, col_loc] = self._waypoints.iloc[0, b_loc]
+            else:
+                self._waypoints.iloc[0, col_loc] = self._waypoints.iloc[0, a_loc]
+
+        if self._waypoints.link_id.iloc[-1] not in self.__results.links.values:
+            if self._waypoints.iloc[-1, col_loc] == self._waypoints.iloc[-1, a_loc]:
+                self._waypoints.iloc[-1, col_loc] = self._waypoints.iloc[-1, b_loc]
+            else:
+                self._waypoints.iloc[-1, col_loc] = self._waypoints.iloc[-1, a_loc]
+
         self._waypoints.loc[self._waypoints.ping_id == ping_id, "is_waypoint"] = 2
 
     @property
     def match_quality(self):
         """Assesses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         if self.__match_quality < 0:
-            buffer = self.parameters.map_matching.buffer_size
-            self._waypoints.loc[:, "ping_is_covered"] = self._waypoints.intersects(self.path_shape.buffer(buffer))[:]
+            shape_buffer = self.path_shape.buffer(self.parameters.map_matching.buffer_size)
+            self._waypoints.loc[:, "ping_is_covered"] = self._waypoints.intersects(shape_buffer)[:].astype(np.int64)
             self.__match_quality = min(1.0, self._waypoints.ping_is_covered.sum() / self._waypoints.shape[0])
         return self.__match_quality
 
