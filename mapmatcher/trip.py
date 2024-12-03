@@ -345,7 +345,7 @@ class Trip:
 
     def __add_waypoint(self):
         stop_nodes = self._waypoints[self._waypoints.is_waypoint == 1].stop_node.values
-        df = self._waypoints.loc[~self._waypoints.ping_is_covered, :]
+        df = self._waypoints.loc[self._waypoints.ping_is_covered==0, :]
         df = df.loc[df.is_waypoint == 0, :]
         df = df.assign(is_start=df.ping_id != 1 + df.ping_id.shift(1), is_end=df.ping_id != df.ping_id.shift(-1) - 1)
         missed_time = df.timestamp[df.is_end].values - df.timestamp[df.is_start].values
