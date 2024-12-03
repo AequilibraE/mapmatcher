@@ -37,20 +37,13 @@ auxiliary = ['folium', 'notebook']
 docs = ["pyaml",
         "enum34>=1.1.6",
         "Sphinx",
-        "pydata-sphinx-theme==0.13.3",
-        "sphinx-book-theme",
-        "myst-parser",
-        "sphinx_autodoc_annotation",
-        "nbsphinx",
+        "pydata-sphinx-theme",
         "pillow",
         "matplotlib",
         "folium",
         "sphinx-gallery",
-        "nbsphinx",
         "ipython_genutils",
-        "folium",
-        "ipykernel",
-        "sphinxcontrib-youtube"]
+        "folium"]
 dev = ['mapmatcher[testing, auxiliary, build, docs]']
 
 [project.urls]

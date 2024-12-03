@@ -35,26 +35,20 @@ author = "Pedro Camargo"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "nbsphinx",
     "sphinx.ext.autodoc",
-    "sphinx_gallery.load_style",
     "sphinx_gallery.gen_gallery",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
-    "sphinx_autodoc_annotation",
     "sphinx.ext.autosummary",
     "sphinx.ext.githubpages",
-    "myst_parser",
-    "sphinxcontrib.youtube",
 ]
 
-myst_enable_extensions = ["html_admonition", "colon_fence"]
+# myst_enable_extensions = ["html_admonition", "colon_fence"]
 
 sphinx_gallery_conf = {
-    "examples_dirs": ["examples"],  # path to your example scripts
-    "gallery_dirs": ["_auto_examples"],  # path to where to save gallery generated output
-    "image_scrapers": ("matplotlib"),
+    "examples_dirs": "examples",  # path to your example scripts
+    "gallery_dirs": "_auto_examples",  # path to where to save gallery generated output
     "capture_repr": ("_repr_html_", "__repr__"),
     "remove_config_comments": True,
 }
@@ -62,7 +56,7 @@ sphinx_gallery_conf = {
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = [".rst", ".md"]
+source_suffix = [".rst"]
 
 # The master toctree document.
 master_doc = "index"
