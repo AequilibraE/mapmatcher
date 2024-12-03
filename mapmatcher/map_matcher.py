@@ -143,9 +143,9 @@ class MapMatcher:
                     trip.map_match(ignore_errors)
                     success += trip.success
                 finally:
-                    logging.getLogger("mapmatcher").critical(f"{trip.id} failed to map-match with critical error")
+                    logging.critical(f"{trip.id} failed to map-match with critical error")
         else:
-            logging.getLogger("mapmatcher").info("Preparing multi-processing")
+            logging.info("Preparing multi-processing")
 
             def jobs(all_ids, threads):
                 return [all_ids[i : i + threads] for i in range(0, len(all_ids), threads)]
@@ -162,7 +162,7 @@ class MapMatcher:
             def accumulator(trip_list):
                 all_trips.extend(trip_list)
 
-            logging.getLogger("mapmatcher").info("Starting parallel processing")
+            logging.info("Starting parallel processing")
             with mp.Pool(int(min(parallel_threads, len(all_jobs)))) as pool:
                 for _, job_gdf in self.__traces.groupby("chunk_id__"):
                     pool.apply_async(
@@ -181,14 +181,14 @@ class MapMatcher:
             success = sum([trip.success for trip in all_trips])
             self.trips = all_trips
 
-        logging.getLogger("mapmatcher").critical(f"Succeeded:{success:,}")
-        logging.getLogger("mapmatcher").critical(f"Failed:{len(self.trips) - success:,}")
+        logging.critical(f"Succeeded:{success:,}")
+        logging.critical(f"Failed:{len(self.trips) - success:,}")
 
     def set_logging_folder(self, folder):
         self.__log_folder = Path(folder)
 
     def __logger(self):
-        logger = logging.getLogger("mapmatcher")
+        logger = logging.getLogger()
         logger.setLevel(1000)
         for h in [h for h in logger.handlers if h.name and "mapmatcherfile" == h.name]:
             h.close()
