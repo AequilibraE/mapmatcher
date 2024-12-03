@@ -86,8 +86,7 @@ class Trip:
             self.__map_match()
         except Exception as e:
             self._err = [f"Critical failures. {traceback.print_exc()}"]
-            logging.getLogger("mapmatcher").critical(e.args)
-            print(e)
+            logging.critical(e.args)
 
     def __map_match(self):
         if not self._waypoints.shape[0]:
@@ -390,8 +389,8 @@ class Trip:
     def match_quality(self):
         """Assesses the map-matching quality. Returns the percentage of GPS pings close to the map-matched trip."""
         if self.__match_quality < 0:
-            buffer = self.parameters.map_matching.buffer_size
-            self._waypoints.loc[:, "ping_is_covered"] = self._waypoints.intersects(self.path_shape.buffer(buffer))[:]
+            shape_buffer = self.path_shape.buffer(self.parameters.map_matching.buffer_size)
+            self._waypoints.loc[:, "ping_is_covered"] = self._waypoints.intersects(shape_buffer)[:].astype(np.int64)
             self.__match_quality = min(1.0, self._waypoints.ping_is_covered.sum() / self._waypoints.shape[0])
         return self.__match_quality
 
