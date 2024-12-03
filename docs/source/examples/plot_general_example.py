@@ -1,5 +1,5 @@
 """
-.. _example_matching_aequilibrae_model:
+.. _example_matching_generic_model:
 
 Matching with a generic network
 ==================================

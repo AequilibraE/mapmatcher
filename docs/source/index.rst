@@ -33,6 +33,7 @@ Check out other sections in our documentation!
    api
 
 .. _citation:
+
 Citing
 ------
 
