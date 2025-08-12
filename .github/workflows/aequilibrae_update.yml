@@ -1,0 +1,24 @@
+name: Test AequilibraE Update
+
+on:
+  repository_dispatch:
+    types: [custom-event]
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies with develop aequilibrae
+        run: |
+          uv sync --extra testing
+          uv add "aequilibrae @ git+https://github.com/AequilibraE/aequilibrae.git@develop"
+      
+      - name: Run tests
+        run: |
+          uv run pytest --cov-report term --cov-config=.coveragerc --cov=mapmatcher tests
