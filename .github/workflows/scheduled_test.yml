@@ -40,6 +40,6 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: python tests/setup_windows_spatialite.py
 
-#      - name: Runs unit tests
-#        run: |
-#          python -m pytest -v
+      - name: Runs unit tests
+        run: |
+          python -m pytest -v
