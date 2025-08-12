@@ -33,7 +33,7 @@ def network() -> Network:
     graph.set_graph("distance")
     with proj.db_connection as conn:
         link_sql = """SELECT link_id, a_node, b_node, Hex(ST_AsBinary(geometry)) as geometry FROM links where instr(modes, "c")>0;"""
-        links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)
+        links = gpd.GeoDataFrame.from_postgis(link_sql, conn, geom_col="geometry", crs=4326)
         links.drop(["a_node", "b_node"], axis=1, inplace=True)
     return Network(graph=graph, links=links, parameters=Parameters())
 
