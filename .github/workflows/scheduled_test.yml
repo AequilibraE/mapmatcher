@@ -10,28 +10,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
+      - uses: actions/checkout@v4
 
-      - name: Install Python 3.10
-        run: uv python install 3.10
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.10
 
       - name: Install dependencies with develop aequilibrae
         run: |
+          python -m pip install -U pip uv
           uv pip sync --extra testing
-          uv add "git+https://github.com/AequilibraE/aequilibrae.git@develop"
+          uv add "aequilibrae @ git+https://github.com/AequilibraE/aequilibrae.git@develop"
           uv pip install -e .[testing]
 
       - name: Download spatialite on Linux
         run: |
           sudo apt-get update
-          python -m pip install -U setuptools
+          python -m uv pip install -U setuptools
           sudo apt-get install libsqlite3-mod-spatialite
           sudo apt-get install -y libspatialite-dev
           sudo ln -s /usr/lib/x86_64-linux-gnu/mod_spatialite.so /usr/lib/x86_64-linux-gnu/mod_spatialite
       
       - name: Run tests
         run: |
-          uv run pytest --cov-report term --cov-config=.coveragerc --cov=mapmatcher tests
+          python -m pytest --cov-report term --cov-config=.coveragerc --cov=mapmatcher tests
