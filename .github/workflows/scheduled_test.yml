@@ -34,4 +34,4 @@ jobs:
       
       - name: Run tests
         run: |
-          python -m pytest --cov-report term --cov-config=.coveragerc --cov=mapmatcher tests
+          python -m pytest tests -v

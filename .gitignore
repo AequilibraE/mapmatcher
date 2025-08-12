@@ -60,3 +60,4 @@ fabric.properties
 #Virtual environment
 .venv/*
 mapmatcher.egg-info/*
+.vscode

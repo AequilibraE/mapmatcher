@@ -25,14 +25,16 @@ def gps_trace() -> gpd.GeoDataFrame:
 @pytest.fixture
 def network() -> Network:
     proj = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
-    proj.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
+    with proj.db_connection as conn:
+        conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
     proj.network.build_graphs(modes=["c"])
     graph = proj.network.graphs["c"]
     graph.prepare_graph(np.array([1], int))
     graph.set_graph("distance")
-    link_sql = """SELECT link_id, a_node, b_node, Hex(ST_AsBinary(geometry)) as geometry FROM links where instr(modes, "c")>0;"""
-    links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)
-    links.drop(["a_node", "b_node"], axis=1, inplace=True)
+    with proj.db_connection as conn:
+        link_sql = """SELECT link_id, a_node, b_node, Hex(ST_AsBinary(geometry)) as geometry FROM links where instr(modes, "c")>0;"""
+        links = gpd.GeoDataFrame.from_postgis(link_sql, proj.conn, geom_col="geometry", crs=4326)
+        links.drop(["a_node", "b_node"], axis=1, inplace=True)
     return Network(graph=graph, links=links, parameters=Parameters())
 
 

@@ -35,7 +35,9 @@ nauru_gps.rename(columns={"x": "longitude", "y": "latitude", "vehicle_unique_id"
 project = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
 
 # We need to have at least one centroid connector to the model due to a bug in AequilibraE 0.9.5
-project.conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
+with project.db_connection as conn:
+    conn.execute("Update Nodes set is_centroid=1 where node_id = 1")
+
 mmatcher = MapMatcher.from_aequilibrae(project, "c")
 
 # %%
