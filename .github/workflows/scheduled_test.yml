@@ -20,8 +20,8 @@ jobs:
       - name: Install dependencies with develop aequilibrae
         run: |
           python -m pip install -U pip uv
-          python -m uv pip sync --extra testing
-          python -m uv add "aequilibrae @ git+https://github.com/AequilibraE/aequilibrae.git@develop"
+          python3 -m uv pip install "git+https://github.com/AequilibraE/aequilibrae.git@develop"
+          touch ./pyproject.toml
           python -m uv pip install -e .[testing]
 
       - name: Download spatialite on Linux
