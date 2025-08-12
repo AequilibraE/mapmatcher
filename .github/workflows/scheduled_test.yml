@@ -13,12 +13,23 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
-          python-version: '3.10'
+          enable-cache: true
+
+      - name: Install Python 3.10
+        run: uv python install 3.10
 
       - name: Install dependencies with develop aequilibrae
         run: |
-          uv sync --extra testing
-          uv add "aequilibrae @ git+https://github.com/AequilibraE/aequilibrae.git@develop"
+          uv add "git+https://github.com/AequilibraE/aequilibrae.git@develop"
+          uv pip install -e .[testing]
+
+      - name: Download spatialite on Linux
+        run: |
+          sudo apt-get update
+          python -m pip install -U setuptools
+          sudo apt-get install libsqlite3-mod-spatialite
+          sudo apt-get install -y libspatialite-dev
+          sudo ln -s /usr/lib/x86_64-linux-gnu/mod_spatialite.so /usr/lib/x86_64-linux-gnu/mod_spatialite
       
       - name: Run tests
         run: |
