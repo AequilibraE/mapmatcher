@@ -54,10 +54,10 @@ jobs:
     - name: Download spatialite on Linux
       if: matrix.os == 'ubuntu-latest'
       run: |
-        sudo apt-get update
-        python -m pip install setuptools --upgrade
-        sudo apt-get install libsqlite3-mod-spatialite
-        sudo apt-get install -y libspatialite-dev
+        sudo apt update
+        sudo apt install libspatialite-dev 
+        sudo apt install -y libsqlite3-mod-spatialite
+        pip3 install spatialite
         sudo ln -s /usr/lib/x86_64-linux-gnu/mod_spatialite.so /usr/lib/x86_64-linux-gnu/mod_spatialite
 
     - name: Download spatialite on Windows
