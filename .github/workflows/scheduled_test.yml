@@ -20,6 +20,7 @@ jobs:
 
       - name: Install dependencies with develop aequilibrae
         run: |
+          uv pip sync --extra testing
           uv add "git+https://github.com/AequilibraE/aequilibrae.git@develop"
           uv pip install -e .[testing]
 
