@@ -23,10 +23,10 @@ if "WINDOWS" in platform.platform().upper():
     }
 
     outfolder = "C:/"
-    zip_path64 = join(outfolder, "sqlite-dll-win64-x64-3320100.zip")
+    zip_path64 = join(outfolder, "sqlite-dll-win-x64-3500400.zip")
     urllib.request.urlretrieve(plats["x64"], zip_path64)
 
-    zip_path86 = join(outfolder, "sqlite-dll-win32-x86-3320100.zip")
+    zip_path86 = join(outfolder, "sqlite-dll-win-x86-3500400.zip")
     urllib.request.urlretrieve(plats["x86"], zip_path86)
 
     root = "C:/hostedtoolcache/windows/Python/"
