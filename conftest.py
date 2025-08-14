@@ -3,7 +3,6 @@ import pytest
 from tempfile import gettempdir
 
 
-
 def pytest_sessionstart(session):
 
     directory = str(gettempdir())

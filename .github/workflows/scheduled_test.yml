@@ -14,15 +14,15 @@ jobs:
     runs-on: ${{ matrix.os}}
     strategy:
       matrix:
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
         os: [ windows-latest, ubuntu-latest ]
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+    - uses: actions/checkout@v4
+    - name: Set Python environment
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies with develop aequilibrae
         run: |
