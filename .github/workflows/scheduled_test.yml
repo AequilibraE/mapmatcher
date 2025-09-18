@@ -17,7 +17,7 @@ jobs:
         # python-version: [ '3.9', '3.10', '3.11', '3.12' ]
         # os: [ windows-latest, ubuntu-latest ]
         python-version: [ '3.12' ]
-        os: [ ubuntu-latest]
+        os: [ windows-latest]
 
       max-parallel: 20
     timeout-minutes: 20
