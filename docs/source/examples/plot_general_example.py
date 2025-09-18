@@ -35,8 +35,9 @@ nauru_gps.rename(columns={"x": "longitude", "y": "latitude", "vehicle_unique_id"
 # Let's get a Nauru example from AequilibraE and extract the link network from it
 project = create_example(join(gettempdir(), uuid.uuid4().hex), "nauru")
 
-sql = "SELECT link_id, a_node, b_node, direction, distance, Hex(ST_AsBinary(geometry)) as geom FROM links"
-gdf = gpd.GeoDataFrame.from_postgis(sql, project.conn, geom_col="geom", crs=4326)
+with project.db_connection as conn:
+    sql = "SELECT link_id, a_node, b_node, direction, distance, Hex(ST_AsBinary(geometry)) as geom FROM links"
+    gdf = gpd.GeoDataFrame.from_postgis(sql, conn, geom_col="geom", crs=4326)
 gdf.head()
 
 

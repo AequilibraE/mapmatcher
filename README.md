@@ -16,4 +16,5 @@ MapMatcher documentation can be found [here](https://aequilibrae.github.io/mapma
 
 Case you use MapMatcher, please cite:
 
-> P. Camargo, S. Hong, and V. Livshits, ‘Expanding the Uses of Truck GPS Data in Freight Modeling and Planning Activities’, Transportation Research Record, vol. 2646, no. 1, pp. 68–76, Jan. 2017, [doi: 10.3141/2646-08](https://journals.sagepub.com/doi/abs/10.3141/2646-08).
+> P. Camargo and R. Imai, ‘Map-matching large streams of vehicle GPS data into bespoke networks’, Australasian Transport Research Forum 2024 Proceedings. 
+  Available at: https://australasiantransportresearchforum.org.au/map-matching-large-streams-of-vehicle-gps-data-into-bespoke-networks/
