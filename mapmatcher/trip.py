@@ -106,7 +106,7 @@ class Trip:
             links = []
             directions = []
             mileposts = []
-            for start, end in zip(wpnts[:-1], wpnts[1:]):
+            for start, end in zip(wpnts[:-1], wpnts[1:], strict=False):
                 res.reset()
                 if start == end:
                     continue
@@ -161,7 +161,7 @@ class Trip:
 
             geo_data = []
             points = self._waypoints[self._waypoints.dist_near_link < self.parameters.map_matching.buffer_size].geometry
-            for (i_d, rec), direction in zip(links.iterrows(), self.__results.direction.to_numpy()):
+            for (i_d, rec), direction in zip(links.iterrows(), self.__results.direction.to_numpy(), strict=False):
                 geo = rec.geometry.coords if direction > 0 else rec.geometry.coords[::-1]
                 found_line = True
                 if points.shape[0]:
