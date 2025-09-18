@@ -1,9 +1,6 @@
 name: Scheduled Test
 
 on:
-  push:
-    branches: [develop]
-  pull_request:
   schedule:
     - cron: '0 8 1 * *'
   repository_dispatch:
@@ -16,7 +13,6 @@ jobs:
       matrix:
         python-version: ['3.10', '3.11', '3.12' ]
         os: [ windows-latest, ubuntu-latest ]
-
       max-parallel: 20
     timeout-minutes: 20
     steps:
