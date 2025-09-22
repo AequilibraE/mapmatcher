@@ -20,11 +20,6 @@ jobs:
       - name: Build SDist
         run: pipx run build --sdist
 
-#      - name: Test if SDist build has all necessary pieces to be installed
-#        run: |
-#          pip3 install setuptools build --upgrade
-#          pip3 install dist/*.tar.gz
-
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-sdist
@@ -44,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.23.3
+        run: pipx run build --wheel
 
       - uses: actions/upload-artifact@v4
         with:
