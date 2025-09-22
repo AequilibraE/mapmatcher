@@ -34,7 +34,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest, macos-13, ubuntu-24.04-arm]
-        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +42,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-${{ matrix.os }}-py${{ matrix.python-version }}
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: dist/*.whl
   
   upload_all:
