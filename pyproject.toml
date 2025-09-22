@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mapmatcher"
+name = 'mapmatcher'
 authors = [{ name = "Pedro Camargo" }]
 maintainers = [{ name = "Pedro Camargo", email = "pedro@outerloop.io" }]
 dynamic = ["version"]
 description = "A package to map-match GPS traces onto an arbitrary network"
-license = { text = "MIT" }
+license = {text = "MIT"}
 requires-python = ">=3.10.0"
 keywords = ["map-matching", "gps", "network", "routing", "aequilibrae"]
 
@@ -24,39 +24,29 @@ classifiers = [
 ]
 
 dependencies = [
-    "aequilibrae>=1.4.0,<2.0.0",
-    "geopandas",
-    "tqdm"
+    'aequilibrae>=1.4.0',
+    'aequilibrae<2.0.0',
+    'geopandas',
+    'tqdm'
 ]
 
 [project.optional-dependencies]
-testing = [
-    "ruff==0.9.10",
-    "black==25.1.0",
-    "pytest"
-]
-build = [
-    "setuptools", 
-    "wheel", 
-    "build", 
-    "tqdm"
-]
-auxiliary = [
-    "folium", 
-    "notebook"
-]
-docs = [
-    "pyaml",
-    "enum34>=1.1.6",
-    "Sphinx",
-    "pydata-sphinx-theme",
-    "pillow",
-    "matplotlib",
-    "folium",
-    "sphinx-gallery",
-    "ipython_genutils",
-]
-dev = ["mapmatcher[testing,auxiliary,build,docs]"]
+testing = ["ruff==0.9.10",
+           "black==25.1.0",
+           'pytest']
+build = ["setuptools", "wheel", "build"]
+auxiliary = ['folium', 'notebook']
+docs = ["pyaml",
+        "enum34>=1.1.6",
+        "Sphinx",
+        "pydata-sphinx-theme",
+        "pillow",
+        "matplotlib",
+        "folium",
+        "sphinx-gallery",
+        "ipython_genutils",
+        "folium"]
+dev = ['mapmatcher[testing, auxiliary, build, docs]']
 
 [project.urls]
 Homepage = "https://github.com/pedrocamargo/map_matching"
@@ -127,26 +117,6 @@ exclude = [
 line-length = 120
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 target-version = "py310"
-
-[tool.uv]
-dev-dependencies = [
-    "ruff==0.9.10",
-    "black==25.1.0",
-    "pytest",
-    "folium",
-    "notebook",
-    "setuptools",
-    "wheel", 
-    "build",
-    "pyaml",
-    "enum34>=1.1.6",
-    "Sphinx",
-    "pydata-sphinx-theme",
-    "pillow",
-    "matplotlib",
-    "sphinx-gallery",
-    "ipython_genutils",
-]
 
 [tool.ruff.mccabe]
 max-complexity = 20
