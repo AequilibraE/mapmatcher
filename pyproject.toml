@@ -80,30 +80,10 @@ namespaces = true
 [tool.setuptools.dynamic]
 version = { attr = "mapmatcher.__version__" }
 
-[tool.uv]
-dev-dependencies = [
-    "ruff==0.9.10",
-    "black==25.1.0",
-    "pytest",
-    "folium",
-    "notebook",
-    "setuptools",
-    "wheel", 
-    "build",
-    "pyaml",
-    "enum34>=1.1.6",
-    "Sphinx",
-    "pydata-sphinx-theme",
-    "pillow",
-    "matplotlib",
-    "sphinx-gallery",
-    "ipython_genutils",
-]
-
 [tool.black]
 line-length = 120
-target-version = ["py310", "py311", "py312"]
-include = "\.pyi?$"
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
 
 [tool.isort]
 multi_line_output = 3
@@ -147,6 +127,26 @@ exclude = [
 line-length = 120
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 target-version = "py310"
+
+[tool.uv]
+dev-dependencies = [
+    "ruff==0.9.10",
+    "black==25.1.0",
+    "pytest",
+    "folium",
+    "notebook",
+    "setuptools",
+    "wheel", 
+    "build",
+    "pyaml",
+    "enum34>=1.1.6",
+    "Sphinx",
+    "pydata-sphinx-theme",
+    "pillow",
+    "matplotlib",
+    "sphinx-gallery",
+    "ipython_genutils",
+]
 
 [tool.ruff.mccabe]
 max-complexity = 20
