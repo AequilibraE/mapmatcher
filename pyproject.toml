@@ -24,7 +24,6 @@ classifiers = [
 ]
 
 dependencies = [
-    'aequilibrae>=1.4.0',
     'aequilibrae<2.0.0',
     'geopandas',
     'tqdm'
