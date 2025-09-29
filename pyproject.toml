@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "aequilibrae>=1.4.0", 'aequilibrae<2.0.0', "geopandas", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,7 +24,6 @@ classifiers = [
 ]
 
 dependencies = [
-    'aequilibrae>=1.4.0',
     'aequilibrae<2.0.0',
     'geopandas',
     'tqdm'
@@ -34,7 +33,7 @@ dependencies = [
 testing = ["ruff==0.9.10",
            "black==25.1.0",
            'pytest']
-build = ["setuptools", "wheel", "build", "tqdm"]
+build = ["setuptools", "wheel", "build"]
 auxiliary = ['folium', 'notebook']
 docs = ["pyaml",
         "enum34>=1.1.6",
@@ -54,7 +53,6 @@ Homepage = "https://github.com/pedrocamargo/map_matching"
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
-
 
 [tool.setuptools]
 license-files = ["LICENSE"]
@@ -83,9 +81,7 @@ force_grid_wrap = 0
 line_length = 120
 profile = "black"
 
-
 [tool.ruff]
-
 select = ["B", "C", "E", "F", "W"]
 ignore = ["E501", "F401", "B028"]
 exclude = [
