@@ -40,7 +40,7 @@ jobs:
         if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
   upload_all:
-    needs: [build_wheels, make_sdist]
+    needs: [builds_package]
     environment: pypi
     permissions:
       id-token: write
