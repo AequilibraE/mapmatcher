@@ -31,8 +31,8 @@ jobs:
 
     - name: Builds package
       run: |
-      python -m build -n
-      python -m build --wheel
+        python -m build -n
+        python -m build --wheel
 
     - name: Stores artifacts along with the workflow result
       uses: actions/upload-artifact@v4
