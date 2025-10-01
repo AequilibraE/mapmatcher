@@ -10,6 +10,11 @@ on:
 jobs:
   builds_package:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mapmatcher
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     - uses: actions/checkout@v4
 
@@ -25,21 +30,28 @@ jobs:
         pip install -e .[build]
 
     - name: Builds package
-      run: python -m build -n
+      run: |
+        python -m build -n
+        python -m build --wheel
 
     - name: Stores artifacts along with the workflow result
       uses: actions/upload-artifact@v4
       with:
         name: library
-        path: dist/*.whl
+        path: dist/*.*
         if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
-    - name: Publish wheels to PyPI
-      if: ${{ github.event_name == 'release'}}
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        python -m pip install twine
-        twine upload dist/*.whl
-        twine upload dist/*.gz
+  upload_all:
+    needs: [builds_package]
+    environment: pypi
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        path: dist
+        merge-multiple: true
+
+    - uses: pypa/gh-action-pypi-publish@release/v1
