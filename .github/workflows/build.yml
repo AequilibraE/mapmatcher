@@ -10,6 +10,11 @@ on:
 jobs:
   builds_package:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mapmatcher
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     - uses: actions/checkout@v4
 
@@ -35,6 +40,7 @@ jobs:
         if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
     - name: Publish to PyPI
+      # if: ${{ github.event_name == 'release'}}
       uses: pypa/gh-action-pypi-publish@v1.5.0
-      with:
-        pypi_token: ${{ secrets.PYPI_TOKEN }}
+      # with:
+      #   pypi_token: ${{ secrets.PYPI_TOKEN }}
