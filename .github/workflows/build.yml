@@ -42,5 +42,5 @@ jobs:
     - name: Publish to PyPI
       # if: ${{ github.event_name == 'release'}}
       uses: pypa/gh-action-pypi-publish@v1.5.0
-      # with:
-      #   pypi_token: ${{ secrets.PYPI_TOKEN }}
+      with:
+        pypi_token: ${{ secrets.PYPI_TOKEN }}
