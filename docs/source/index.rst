@@ -14,7 +14,7 @@ to use **MapMatcher** to map-match GPS traces to a bespoke link network.
 
 Install
 -------
-To instal MapMatcher:
+To install MapMatcher:
 
 .. code-block::
 
